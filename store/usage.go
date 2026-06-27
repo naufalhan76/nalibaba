@@ -312,7 +312,7 @@ func (s *Store) GetUsageOverTime(hours int) ([]UsageTimePoint, error) {
 	
 	rows, err := s.db.Query(`
 		SELECT 
-			strftime('%Y-%m-%d %H:00', created_at) as time_period,
+			strftime('%Y-%m-%d %H:00', datetime(created_at, '+7 hours')) as time_period,
 			model,
 			SUM(duration_ms) as total_duration,
 			COUNT(*) as request_count
