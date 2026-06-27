@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — Alibaba Router</title>
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --card: #1a1a1a;
+    --border: #2a2a2a;
+    --border-hover: #3a3a3a;
+    --text: #e4e4e4;
+    --text-dim: #8a8a8a;
+    --text-muted: #5a5a5a;
+    --accent: #00d4ff;
+    --accent-dim: #0099bb;
+    --accent-bg: rgba(0, 212, 255, 0.08);
+    --danger: #ff4757;
+    --danger-bg: rgba(255, 71, 87, 0.1);
+    --success: #2ed573;
+    --success-bg: rgba(46, 213, 115, 0.1);
+    --warning: #ffa502;
+    --warning-bg: rgba(255, 165, 2, 0.1);
+    --mono: 'SF Mono', 'Fira Code', 'Cascadia Code', 'JetBrains Mono', Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+    --radius: 8px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  /* Nav */
+  .nav {
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .nav-inner {
+    max-width: 1200px; margin: 0 auto;
+    display: flex; align-items: center; gap: 8px;
+    padding: 0 24px; height: 52px;
+  }
+  .nav-brand {
+    font-weight: 600; font-size: 15px;
+    color: var(--text); margin-right: 16px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .nav-brand svg { color: var(--accent); }
+  .nav-links { display: flex; gap: 2px; flex: 1; }
+  .nav-link {
+    padding: 6px 14px; border-radius: 6px;
+    color: var(--text-dim); text-decoration: none;
+    font-size: 13px; font-weight: 500;
+    transition: all 0.15s;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .nav-link:hover { color: var(--text); background: rgba(255,255,255,0.04); }
+  .nav-link.active { color: var(--accent); background: var(--accent-bg); }
+  .nav-link svg { opacity: 0.8; }
+
+  /* Layout */
+  .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+  .section { margin-bottom: 32px; }
+  .section-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .section-title {
+    font-size: 14px; font-weight: 600;
+    color: var(--text); display: flex; align-items: center; gap: 8px;
+  }
+  .section-title svg { color: var(--text-dim); }
+  .section-actions { display: flex; gap: 8px; align-items: center; }
+
+  /* Stats grid */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    transition: border-color 0.15s;
+  }
+  .stat-card:hover { border-color: var(--border-hover); }
+  .stat-label {
+    font-size: 11px; text-transform: uppercase;
+    letter-spacing: 0.04em; color: var(--text-muted);
+    margin-bottom: 8px; display: flex; align-items: center; gap: 6px;
+  }
+  .stat-value {
+    font-size: 28px; font-weight: 600;
+    font-family: var(--mono); color: var(--text);
+  }
+  .stat-value.accent { color: var(--accent); }
+  .stat-value.danger { color: var(--danger); }
+  .stat-value.warning { color: var(--warning); }
+
+  /* Grid 2-col */
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  /* Card */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .card-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.04em;
+    color: var(--text-muted);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .card-body { padding: 0; }
+
+  /* Table */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th {
+    text-align: left; padding: 10px 14px;
+    font-size: 11px; text-transform: uppercase;
+    letter-spacing: 0.04em; color: var(--text-muted);
+    font-weight: 600;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  tbody td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    vertical-align: middle;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .table-wrap table { min-width: 400px; }
+
+  /* Mobile: compact table, hide less-important columns */
+  @media (max-width: 600px) {
+    .hide-mobile { display: none; }
+    .table-wrap table { min-width: auto; }
+    .row-actions { flex-direction: column; gap: 2px; }
+    .btn-sm { padding: 3px 6px; font-size: 10px; }
+  }
+  tbody tr:hover { background: rgba(255,255,255,0.02); }
+  .td-mono { font-family: var(--mono); font-size: 12px; }
+  .td-dim { color: var(--text-dim); }
+  .td-muted { color: var(--text-muted); font-size: 12px; }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px; border-radius: 6px;
+    border: 1px solid var(--border); background: transparent;
+    color: var(--text); font-family: var(--sans); font-size: 12px;
+    font-weight: 500; cursor: pointer;
+    transition: all 0.15s; white-space: nowrap;
+  }
+  .btn:hover { border-color: var(--border-hover); background: rgba(255,255,255,0.04); }
+  .btn svg { flex-shrink: 0; }
+  .btn-primary { border-color: var(--accent-dim); color: var(--accent); background: var(--accent-bg); }
+  .btn-primary:hover { background: rgba(0, 212, 255, 0.15); border-color: var(--accent); }
+  .btn-danger { border-color: rgba(255,71,87,0.3); color: var(--danger); background: var(--danger-bg); }
+  .btn-danger:hover { background: rgba(255,71,87,0.2); }
+  .btn-sm { padding: 4px 8px; font-size: 11px; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .row-actions { display: flex; gap: 4px; }
+
+  /* Badges */
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px; border-radius: 4px;
+    font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.03em;
+  }
+  .badge-active { background: var(--success-bg); color: var(--success); }
+  .badge-stopped { background: rgba(255,255,255,0.06); color: var(--text-muted); }
+  .badge-running { background: var(--success-bg); color: var(--success); }
+  .badge-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: currentColor;
+  }
+  .badge-running .badge-dot {
+    animation: pulse 1.5s ease infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* Status rows */
+  .status-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .status-row:last-child { border-bottom: none; }
+  .status-label {
+    font-size: 12px; color: var(--text-dim);
+    text-transform: uppercase; letter-spacing: 0.03em;
+  }
+  .status-value {
+    font-family: var(--mono); font-size: 13px;
+    color: var(--text); text-align: right;
+  }
+
+  /* Empty */
+  .empty {
+    padding: 24px 16px; text-align: center;
+    color: var(--text-muted); font-size: 13px;
+  }
+
+  /* Toast */
+  .toast-container {
+    position: fixed; bottom: 24px; right: 24px; z-index: 1000;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .toast {
+    background: var(--card); border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    padding: 10px 16px; border-radius: 6px;
+    font-size: 13px; color: var(--text);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    animation: slideIn 0.2s ease;
+    max-width: 360px;
+  }
+  .toast.error { border-left-color: var(--danger); }
+  .toast.success { border-left-color: var(--success); }
+  @keyframes slideIn {
+    from { transform: translateX(20px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+
+  /* Loading */
+  .loading {
+    display: inline-block; width: 12px; height: 12px;
+    border: 2px solid var(--border); border-top-color: var(--accent);
+    border-radius: 50%; animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Responsive */
+  @media (max-width: 900px) {
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .grid-2 { grid-template-columns: 1fr; }
+    .table-wrap { overflow-x: auto; }
+  }
+  @media (max-width: 600px) {
+    .container { padding: 16px; }
+    .stats-grid { grid-template-columns: 1fr; }
+    .nav-inner { padding: 0 16px; }
+    .nav-brand span { display: none; }
+  }
+
+  /* Hamburger toggle - hidden on desktop */
+  .nav-toggle {
+    display: none;
+    background: none; border: 1px solid var(--border);
+    border-radius: 6px; padding: 6px 8px;
+    cursor: pointer; color: var(--text);
+    margin-left: auto;
+  }
+  .nav-toggle svg { display: block; }
+
+  @media (max-width: 900px) {
+    .nav-toggle { display: block; }
+    .nav-links {
+      display: none;
+      flex-direction: column;
+      position: absolute;
+      top: 52px; left: 0; right: 0;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      padding: 8px 16px 12px;
+      gap: 4px;
+      z-index: 100;
+    }
+    .nav-links.open { display: flex; }
+    .nav-link { padding: 10px 14px; width: 100%; }
+    .nav-inner { position: relative; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav class="nav">
+  <div class="nav-inner">
+    <div class="nav-brand">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="2" y="14" width="20" height="8" rx="2"/><path d="M6.01 18H6M10 18h.01M15 10v4M17.84 7.17a4 4 0 0 0-5.66 0M20.66 4.34a8 8 0 0 0-11.31 0"/>
+      </svg>
+      <span>Alibaba Router</span>
+    </div>
+    <button class="nav-toggle" onclick="toggleNav()" aria-label="Toggle navigation">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <div class="nav-links">
+      <a href="/dashboard.html" class="nav-link active">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </a>
+      <a href="/usage.html" class="nav-link">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Usage
+      </a>
+      <a href="/accounts.html" class="nav-link">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Accounts
+      </a>
+      <a href="/models.html" class="nav-link">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        Models
+      </a>
+      <a href="/proxies.html" class="nav-link">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        Proxies
+      </a>
+      <a href="/farm.html" class="nav-link">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/></svg>
+        Farm
+      </a>
+    </div>
+  </div>
+</nav>
+
+<div class="container">
+
+  <!-- Stats -->
+  <div class="section">
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          Total Accounts
+        </div>
+        <div class="stat-value" id="stat-accounts">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+          Models Available
+        </div>
+        <div class="stat-value accent" id="stat-models">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+          Router Keys
+        </div>
+        <div class="stat-value" id="stat-keys">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>
+          Exhausted Slots
+        </div>
+        <div class="stat-value danger" id="stat-exhausted">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Total Tokens Used
+        </div>
+        <div class="stat-value" id="stat-tokens">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/><circle cx="12" cy="12" r="11"/></svg>
+          Dead Accounts
+        </div>
+        <div class="stat-value warning" id="stat-dead">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Router Keys + Quick Health -->
+  <div class="grid-2">
+
+    <!-- Router Keys -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+          Router Keys
+        </div>
+        <div class="section-actions">
+          <button class="btn btn-primary" onclick="generateKey()" id="btn-gen-key">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            Generate
+          </button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Key</th><th class="hide-mobile">Label</th><th class="hide-mobile">Created</th><th>Status</th><th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="keys-tbody">
+                <tr><td colspan="5"><div class="empty">Loading...</div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Health -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          Quick Health
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-body">
+          <div class="status-row">
+            <span class="status-label">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:4px;color:var(--text-muted)"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+              Proxies
+            </span>
+            <span class="status-value" id="health-proxies">—</span>
+          </div>
+          <div class="status-row">
+            <span class="status-label">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:4px;color:var(--text-muted)"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/></svg>
+              Farm Status
+            </span>
+            <span id="health-farm"><span class="badge badge-stopped"><span class="badge-dot"></span>Unknown</span></span>
+          </div>
+          <div class="status-row">
+            <span class="status-label">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:4px;color:var(--text-muted)"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              Total Slots
+            </span>
+            <span class="status-value" id="health-slots">—</span>
+          </div>
+          <div class="status-row">
+            <span class="status-label">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:4px;color:var(--text-muted)"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>
+              Models Exhausted
+            </span>
+            <span class="status-value" id="health-models-exhausted">—</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<div class="toast-container" id="toasts"></div>
+
+<script>
+const API = '';
+
+// --- Nav toggle (mobile) ---
+function toggleNav() {
+  const links = document.querySelector('.nav-links');
+  links.classList.toggle('open');
+}
+// close nav when clicking a link (mobile)
+document.querySelectorAll('.nav-link').forEach(l => l.addEventListener('click', () => {
+  document.querySelector('.nav-links').classList.remove('open');
+}));
+
+// --- Helpers ---
+function toast(msg, type = '') {
+  const c = document.getElementById('toasts');
+  const t = document.createElement('div');
+  t.className = 'toast ' + type;
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 200); }, 3000);
+}
+
+function maskKey(key) {
+  if (!key || key.length < 12) return key;
+  return key.slice(0, 6) + '••••••••••••' + key.slice(-4);
+}
+
+function fmtNum(n) {
+  if (n === null || n === undefined) return '0';
+  if (n >= 1e9) return (n / 1e9).toFixed(2) + 'B';
+  if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
+  if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
+  return String(n);
+}
+
+function fmtDate(d) {
+  if (!d) return '—';
+  const date = new Date(d);
+  if (isNaN(date)) return d;
+  return date.toLocaleString('en-US', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+
+function escapeHtml(s) {
+  if (s === null || s === undefined) return '';
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+async function api(path, opts = {}) {
+  try {
+    const r = await fetch(API + path, {
+      headers: { 'Content-Type': 'application/json' },
+      ...opts
+    });
+    if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+    const ct = r.headers.get('content-type') || '';
+    if (ct.includes('application/json')) return await r.json();
+    return await r.text();
+  } catch (e) {
+    toast('API error: ' + e.message, 'error');
+    throw e;
+  }
+}
+
+function farmBadge(running) {
+  if (running) return '<span class="badge badge-running"><span class="badge-dot"></span>Running</span>';
+  return '<span class="badge badge-stopped"><span class="badge-dot"></span>Stopped</span>';
+}
+
+// --- Load stats ---
+async function loadStats() {
+  try {
+    const s = await api('/admin/api/stats');
+    document.getElementById('stat-accounts').textContent = s.total_accounts ?? '—';
+    document.getElementById('stat-models').textContent = s.models_available ?? '—';
+    document.getElementById('stat-keys').textContent = s.total_router_keys ?? '—';
+    document.getElementById('stat-exhausted').textContent = s.exhausted_slots ?? '—';
+    document.getElementById('stat-tokens').textContent = fmtNum(s.total_tokens_used ?? 0);
+    document.getElementById('health-slots').textContent = s.total_slots ?? '—';
+    document.getElementById('health-models-exhausted').textContent = s.models_exhausted ?? '—';
+  } catch (e) {}
+}
+
+// --- Dead accounts count ---
+async function loadDeadCount() {
+  try {
+    const dead = await api('/admin/api/accounts/dead');
+    document.getElementById('stat-dead').textContent = (dead && dead.length) ? dead.length : 0;
+  } catch (e) {}
+}
+
+// --- Keys ---
+async function loadKeys() {
+  try {
+    const keys = await api('/admin/api/keys');
+    const tb = document.getElementById('keys-tbody');
+    if (!keys || keys.length === 0) {
+      tb.innerHTML = '<tr><td colspan="5"><div class="empty">No router keys yet</div></td></tr>';
+      return;
+    }
+    tb.innerHTML = keys.map(k => `
+      <tr>
+        <td class="td-mono">${maskKey(k.key)}</td>
+        <td class="hide-mobile">${escapeHtml(k.label || '—')}</td>
+        <td class="td-muted hide-mobile">${fmtDate(k.created_at)}</td>
+        <td>${k.active
+          ? '<span class="badge badge-active"><span class="badge-dot"></span>Active</span>'
+          : '<span class="badge badge-stopped"><span class="badge-dot"></span>Inactive</span>'}
+        </td>
+        <td>
+          <div class="row-actions">
+            <button class="btn btn-sm" onclick="copyKey('${k.key}')" title="Copy full key">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              Copy
+            </button>
+            <button class="btn btn-sm btn-danger" onclick="revokeKey('${k.key}')" title="Revoke key">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              Revoke
+            </button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+  } catch (e) {}
+}
+
+async function generateKey() {
+  const label = prompt('Enter label for new key (optional):');
+  if (label === null) return;
+  const btn = document.getElementById('btn-gen-key');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loading"></span> Generating...';
+  try {
+    const r = await api('/admin/api/keys', { method: 'POST', body: JSON.stringify({ label: label || '' }) });
+    toast('Key generated: ' + maskKey(r.key), 'success');
+    loadKeys();
+    loadStats();
+  } catch (e) {
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg> Generate';
+  }
+}
+
+async function copyKey(fullKey) {
+  try {
+    await navigator.clipboard.writeText(fullKey);
+    toast('Key copied to clipboard', 'success');
+  } catch (e) {
+    // fallback
+    const ta = document.createElement('textarea');
+    ta.value = fullKey;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    toast('Key copied to clipboard', 'success');
+  }
+}
+
+async function revokeKey(key) {
+  if (!confirm('Revoke this router key? This cannot be undone.')) return;
+  try {
+    await api('/admin/api/keys?key=' + encodeURIComponent(key), { method: 'DELETE' });
+    toast('Key revoked', 'success');
+    loadKeys();
+    loadStats();
+  } catch (e) {
+    toast('Failed to revoke key', 'error');
+  }
+}
+
+// --- Quick health ---
+async function loadHealth() {
+  try {
+    const [proxies, farm] = await Promise.all([
+      api('/admin/api/proxies'),
+      api('/admin/api/farm/status')
+    ]);
+    const healthyCount = (proxies || []).filter(p => p.healthy).length;
+    document.getElementById('health-proxies').textContent = `${healthyCount}/${proxies ? proxies.length : 0} healthy`;
+    document.getElementById('health-farm').innerHTML = farmBadge(farm.running);
+  } catch (e) {}
+}
+
+// --- Init ---
+async function init() {
+  await Promise.all([loadStats(), loadDeadCount(), loadKeys(), loadHealth()]);
+}
+
+init();
+setInterval(() => { loadStats(); loadDeadCount(); loadHealth(); }, 10000);
+</script>
+</body>
+</html>

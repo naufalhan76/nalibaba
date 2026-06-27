@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Proxies — Alibaba Router</title>
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --card: #1a1a1a;
+    --border: #2a2a2a;
+    --border-hover: #3a3a3a;
+    --text: #e4e4e4;
+    --text-dim: #8a8a8a;
+    --text-muted: #5a5a5a;
+    --accent: #00d4ff;
+    --accent-dim: #0099bb;
+    --accent-bg: rgba(0, 212, 255, 0.08);
+    --danger: #ff4757;
+    --danger-bg: rgba(255, 71, 87, 0.1);
+    --success: #2ed573;
+    --success-bg: rgba(46, 213, 115, 0.1);
+    --warning: #ffa502;
+    --warning-bg: rgba(255, 165, 2, 0.1);
+    --mono: 'SF Mono', 'Fira Code', 'Cascadia Code', 'JetBrains Mono', Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+    --radius: 8px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  /* Nav */
+  .nav {
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .nav-inner {
+    max-width: 1200px; margin: 0 auto;
+    display: flex; align-items: center; gap: 8px;
+    padding: 0 24px; height: 52px;
+  }
+  .nav-brand {
+    font-weight: 600; font-size: 15px;
+    color: var(--text); margin-right: 16px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .nav-brand svg { color: var(--accent); }
+  .nav-links { display: flex; gap: 2px; flex: 1; }
+  .nav-link {
+    padding: 6px 14px; border-radius: 6px;
+    color: var(--text-dim); text-decoration: none;
+    font-size: 13px; font-weight: 500;
+    transition: all 0.15s;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .nav-link:hover { color: var(--text); background: rgba(255,255,255,0.04); }
+  .nav-link.active { color: var(--accent); background: var(--accent-bg); }
+  .nav-link svg { opacity: 0.8; }
+
+  /* Layout */
+  .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+  .section { margin-bottom: 32px; }
+  .section-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .section-title {
+    font-size: 14px; font-weight: 600;
+    color: var(--text); display: flex; align-items: center; gap: 8px;
+  }
+  .section-title svg { color: var(--text-dim); }
+  .section-actions { display: flex; gap: 8px; align-items: center; }
+
+  /* Card */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .card-body { padding: 0; }
+
+  /* Add form */
+  .add-form {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  .add-form .url-input {
+    flex: 1;
+    padding: 8px 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12.5px;
+    transition: border-color 0.15s;
+  }
+  .add-form .url-input:focus {
+    outline: none;
+    border-color: var(--accent-dim);
+  }
+  .add-form .url-input::placeholder { color: var(--text-muted); }
+
+  /* Table */
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .table-wrap table { min-width: 400px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th {
+    text-align: left; padding: 10px 14px;
+    font-size: 11px; text-transform: uppercase;
+    letter-spacing: 0.04em; color: var(--text-muted);
+    font-weight: 600;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  tbody td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    vertical-align: middle;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: rgba(255,255,255,0.02); }
+  .td-mono { font-family: var(--mono); font-size: 12px; }
+  .td-dim { color: var(--text-dim); }
+  .td-muted { color: var(--text-muted); font-size: 12px; }
+  .td-trunc {
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text-muted);
+    font-size: 12px;
+  }
+  .td-trunc:hover { white-space: normal; }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px; border-radius: 6px;
+    border: 1px solid var(--border); background: transparent;
+    color: var(--text); font-family: var(--sans); font-size: 12px;
+    font-weight: 500; cursor: pointer;
+    transition: all 0.15s; white-space: nowrap;
+  }
+  .btn:hover { border-color: var(--border-hover); background: rgba(255,255,255,0.04); }
+  .btn svg { flex-shrink: 0; }
+  .btn-primary { border-color: var(--accent-dim); color: var(--accent); background: var(--accent-bg); }
+  .btn-primary:hover { background: rgba(0, 212, 255, 0.15); border-color: var(--accent); }
+  .btn-danger { border-color: rgba(255,71,87,0.3); color: var(--danger); background: var(--danger-bg); }
+  .btn-danger:hover { background: rgba(255,71,87,0.2); }
+  .btn-sm { padding: 4px 8px; font-size: 11px; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-icon { padding: 4px 6px; }
+  .row-actions { display: flex; gap: 6px; justify-content: flex-end; }
+
+  /* Badges */
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px; border-radius: 4px;
+    font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.03em;
+  }
+  .badge-healthy { background: var(--success-bg); color: var(--success); }
+  .badge-unhealthy { background: var(--danger-bg); color: var(--danger); }
+  .badge-unknown { background: rgba(255,255,255,0.06); color: var(--text-muted); }
+  .badge-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: currentColor;
+  }
+
+  /* Empty */
+  .empty {
+    padding: 24px 16px; text-align: center;
+    color: var(--text-muted); font-size: 13px;
+  }
+
+  /* Toast */
+  .toast-container {
+    position: fixed; bottom: 24px; right: 24px; z-index: 1000;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .toast {
+    background: var(--card); border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    padding: 10px 16px; border-radius: 6px;
+    font-size: 13px; color: var(--text);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    animation: slideIn 0.2s ease;
+    max-width: 360px;
+  }
+  .toast.success { border-left-color: var(--success); }
+  .toast.error { border-left-color: var(--danger); }
+  @keyframes slideIn {
+    from { transform: translateX(20px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+
+  /* Loading */
+  .loading {
+    display: inline-block; width: 12px; height: 12px;
+    border: 2px solid var(--border); border-top-color: var(--accent);
+    border-radius: 50%; animation: spin 0.7s linear infinite;
+  }
+  .loading-sm { width: 10px; height: 10px; border-width: 1.5px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Stat pill */
+  .count-pill {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-dim);
+    background: rgba(255,255,255,0.04);
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+
+  /* Progress indicator for Check All */
+  .checkall-progress {
+    font-size: 11px;
+    color: var(--text-dim);
+    font-family: var(--mono);
+  }
+
+  /* Responsive */
+  @media (max-width: 600px) {
+    .container { padding: 16px; }
+    .nav-inner { padding: 0 16px; }
+    .nav-brand span { display: none; }
+    .add-form { flex-direction: column; align-items: stretch; }
+    .add-form .btn { justify-content: center; }
+    .hide-mobile { display: none; }
+    .table-wrap table { min-width: auto; }
+    .row-actions { flex-direction: column; gap: 2px; }
+    .btn-sm { padding: 3px 6px; font-size: 10px; }
+  }
+
+  /* Hamburger toggle - hidden on desktop */
+  .nav-toggle {
+    display: none;
+    background: none; border: 1px solid var(--border);
+    border-radius: 6px; padding: 6px 8px;
+    cursor: pointer; color: var(--text);
+    margin-left: auto;
+  }
+  .nav-toggle svg { display: block; }
+
+  @media (max-width: 768px) {
+    .nav-toggle { display: block; }
+    .nav-links {
+      display: none;
+      flex-direction: column;
+      position: absolute;
+      top: 52px; left: 0; right: 0;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      padding: 8px 16px 12px;
+      gap: 4px;
+      z-index: 100;
+    }
+    .nav-links.open { display: flex; }
+    .nav-link { padding: 10px 14px; width: 100%; }
+    .nav-inner { position: relative; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav class="nav">
+  <div class="nav-inner">
+    <div class="nav-brand">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="2" y="14" width="20" height="8" rx="2"/><path d="M6.01 18H6M10 18h.01M15 10v4M17.84 7.17a4 4 0 0 0-5.66 0M20.66 4.34a8 8 0 0 0-11.31 0"/>
+      </svg>
+      <span>Alibaba Router</span>
+    </div>
+    <button class="nav-toggle" onclick="toggleNav()" aria-label="Toggle navigation">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <div class="nav-links">
+      <a href="/dashboard.html" class="nav-link">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </a>
+      <a href="/usage.html" class="nav-link">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Usage
+      </a>
+      <a href="/accounts.html" class="nav-link">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Accounts
+      </a>
+      <a href="/models.html" class="nav-link">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        Models
+      </a>
+      <a href="/proxies.html" class="nav-link active">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        Proxies
+      </a>
+      <a href="/farm.html" class="nav-link">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/></svg>
+        Farm
+      </a>
+    </div>
+  </div>
+</nav>
+
+<div class="container">
+
+  <!-- Add proxy form -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        Proxy Pool
+        <span class="count-pill" id="proxy-count">—</span>
+      </div>
+      <div class="section-actions">
+        <span class="checkall-progress" id="checkall-progress" style="display:none;"></span>
+        <button class="btn" id="btn-checkall" onclick="checkAll()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+          Check All
+        </button>
+        <button class="btn" id="btn-refresh" onclick="loadProxies()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          Refresh
+        </button>
+      </div>
+    </div>
+
+    <form class="add-form" id="add-form" onsubmit="addProxy(event)">
+      <input type="text" class="url-input" id="proxy-url" placeholder="http://user:pass@ip:port" autocomplete="off">
+      <button type="submit" class="btn btn-primary" id="btn-add">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+        Add
+      </button>
+    </form>
+
+    <div class="card">
+      <div class="card-body">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>URL</th>
+                <th>Region</th>
+                <th>Health</th>
+                <th class="hide-mobile">Latency</th>
+                <th class="hide-mobile">Last Check</th>
+                <th class="hide-mobile">Last Error</th>
+                <th style="text-align:right;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="proxies-tbody">
+              <tr><td colspan="8"><div class="empty">Loading...</div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast-container" id="toasts"></div>
+
+<script>
+const API = '';
+let allProxies = [];
+let checkAllRunning = false;
+
+// --- Nav toggle (mobile) ---
+function toggleNav() {
+  const links = document.querySelector('.nav-links');
+  links.classList.toggle('open');
+}
+// close nav when clicking a link (mobile)
+document.querySelectorAll('.nav-link').forEach(l => l.addEventListener('click', () => {
+  document.querySelector('.nav-links').classList.remove('open');
+}));
+
+// --- Helpers ---
+function toast(msg, type = '') {
+  const c = document.getElementById('toasts');
+  const t = document.createElement('div');
+  t.className = 'toast ' + type;
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 200); }, 2500);
+}
+
+function escapeHtml(s) {
+  if (s === null || s === undefined) return '';
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function maskUrl(url) {
+  if (!url) return '—';
+  try {
+    // Mask credentials: show scheme + ip:port only, hide user:pass
+    return url.replace(/^(https?:\/\/)([^@/:]+)(:[^@/:]*)?@/i, '$1••••••@');
+  } catch (e) {
+    return escapeHtml(url);
+  }
+}
+
+function fmtDate(d) {
+  if (!d) return '—';
+  const date = new Date(d);
+  if (isNaN(date)) return escapeHtml(d);
+  return date.toLocaleString('en-US', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit', second:'2-digit' });
+}
+
+function fmtLatency(ms) {
+  if (ms === null || ms === undefined) return '—';
+  return ms + 'ms';
+}
+
+async function api(path, opts = {}) {
+  try {
+    const r = await fetch(API + path, {
+      headers: { 'Content-Type': 'application/json' },
+      ...opts
+    });
+    if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+    const ct = r.headers.get('content-type') || '';
+    if (ct.includes('application/json')) return await r.json();
+    return await r.text();
+  } catch (e) {
+    toast('API error: ' + e.message, 'error');
+    throw e;
+  }
+}
+
+// --- Render ---
+function healthBadge(healthy) {
+  if (healthy === true) return '<span class="badge badge-healthy"><span class="badge-dot"></span>Healthy</span>';
+  if (healthy === false) return '<span class="badge badge-unhealthy"><span class="badge-dot"></span>Down</span>';
+  return '<span class="badge badge-unknown"><span class="badge-dot"></span>Unknown</span>';
+}
+
+function renderProxies() {
+  const tb = document.getElementById('proxies-tbody');
+  document.getElementById('proxy-count').textContent = allProxies.length;
+  if (!allProxies || allProxies.length === 0) {
+    tb.innerHTML = '<tr><td colspan="8"><div class="empty">No proxies yet. Add one above.</div></td></tr>';
+    return;
+  }
+  tb.innerHTML = allProxies.map(p => {
+    const idStr = escapeHtml(String(p.id));
+    return `
+      <tr data-id="${idStr}">
+        <td class="td-mono td-muted">${idStr}</td>
+        <td class="td-mono">${escapeHtml(maskUrl(p.url))}</td>
+        <td class="td-dim">${escapeHtml(p.region || '—')}</td>
+        <td>${healthBadge(p.healthy)}</td>
+        <td class="td-mono td-dim hide-mobile" data-field="latency">${fmtLatency(p.latency_ms)}</td>
+        <td class="td-muted hide-mobile" data-field="lastcheck">${fmtDate(p.last_check_at)}</td>
+        <td class="td-trunc hide-mobile" title="${escapeHtml(p.last_error || '')}" data-field="lasterror">${escapeHtml(p.last_error || '—')}</td>
+        <td>
+          <div class="row-actions">
+            <button class="btn btn-sm btn-icon" data-action="check" onclick="checkProxy('${idStr}', this)" title="Check">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            </button>
+            <button class="btn btn-sm btn-danger btn-icon" data-action="delete" onclick="deleteProxy('${idStr}', this)" title="Delete">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+// Update a single row in place (live update without full re-render)
+function updateRow(id, data) {
+  const row = document.querySelector(`tr[data-id="${CSS.escape(String(id))}"]`);
+  if (!row) return;
+  // Update proxy in array
+  const idx = allProxies.findIndex(p => String(p.id) === String(id));
+  if (idx >= 0) {
+    allProxies[idx] = { ...allProxies[idx], ...data };
+  }
+  // Update cells
+  const healthCell = row.querySelectorAll('td')[3];
+  if (healthCell) healthCell.innerHTML = healthBadge(data.healthy);
+  const latCell = row.querySelector('[data-field="latency"]');
+  if (latCell) latCell.textContent = fmtLatency(data.latency_ms);
+  const lcCell = row.querySelector('[data-field="lastcheck"]');
+  if (lcCell) lcCell.textContent = fmtDate(data.last_check_at || new Date().toISOString());
+  const leCell = row.querySelector('[data-field="lasterror"]');
+  if (leCell) {
+    leCell.textContent = data.last_error || (data.healthy ? '—' : 'unhealthy');
+    leCell.setAttribute('title', data.last_error || '');
+  }
+  // Update region cell
+  const regionCell = row.querySelectorAll('td')[2];
+  if (regionCell && data.region) regionCell.textContent = data.region;
+}
+
+function setRowLoading(row, loading) {
+  if (!row) return;
+  const btn = row.querySelector('[data-action="check"]');
+  if (!btn) return;
+  if (loading) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="loading loading-sm"></span>';
+  } else {
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>';
+  }
+}
+
+// --- Add proxy ---
+async function addProxy(e) {
+  e.preventDefault();
+  const input = document.getElementById('proxy-url');
+  const btn = document.getElementById('btn-add');
+  const url = input.value.trim();
+  if (!url) return;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loading"></span> Adding...';
+  try {
+    await api('/admin/api/proxies', { method: 'POST', body: JSON.stringify({ url }) });
+    toast('Proxy added', 'success');
+    input.value = '';
+    await loadProxies();
+  } catch (e) {
+    // toast handled by api()
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg> Add';
+  }
+}
+
+// --- Check single proxy ---
+async function checkProxy(id, btn) {
+  const row = btn.closest('tr');
+  setRowLoading(row, true);
+  try {
+    const r = await api('/admin/api/proxies/check', { method: 'POST', body: JSON.stringify({ id }) });
+    const data = {
+      healthy: r.healthy,
+      latency_ms: r.latency_ms,
+      region: r.region || (r.ip ? null : null),
+      last_error: r.error || (r.healthy ? '' : 'unhealthy'),
+      last_check_at: new Date().toISOString()
+    };
+    updateRow(id, data);
+    if (r.healthy) {
+      toast(`Proxy ${id}: healthy (${r.latency_ms}ms${r.region ? ', ' + r.region : ''})`, 'success');
+    } else {
+      toast(`Proxy ${id}: ${r.error || 'unhealthy'}`, 'error');
+    }
+  } catch (e) {
+    setRowLoading(row, false);
+  }
+}
+
+// --- Delete proxy ---
+async function deleteProxy(id, btn) {
+  if (!confirm('Delete this proxy?')) return;
+  btn.disabled = true;
+  try {
+    await api('/admin/api/proxies', { method: 'DELETE', body: JSON.stringify({ id }) });
+    toast('Proxy deleted', 'success');
+    await loadProxies();
+  } catch (e) {
+    btn.disabled = false;
+  }
+}
+
+// --- Check All ---
+async function checkAll() {
+  if (checkAllRunning || allProxies.length === 0) return;
+  checkAllRunning = true;
+  const btn = document.getElementById('btn-checkall');
+  const prog = document.getElementById('checkall-progress');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loading"></span> Checking...';
+  prog.style.display = 'inline';
+  const total = allProxies.length;
+  let done = 0;
+  let healthy = 0;
+  // Snapshot IDs to avoid mutation issues during iteration
+  const ids = allProxies.map(p => p.id);
+  for (const id of ids) {
+    done++;
+    prog.textContent = `${done}/${total}`;
+    const row = document.querySelector(`tr[data-id="${CSS.escape(String(id))}"]`);
+    setRowLoading(row, true);
+    try {
+      const r = await api('/admin/api/proxies/check', { method: 'POST', body: JSON.stringify({ id }) });
+      const data = {
+        healthy: r.healthy,
+        latency_ms: r.latency_ms,
+        region: r.region,
+        last_error: r.error || (r.healthy ? '' : 'unhealthy'),
+        last_check_at: new Date().toISOString()
+      };
+      updateRow(id, data);
+      if (r.healthy) healthy++;
+    } catch (e) {
+      // continue
+    }
+    setRowLoading(row, false);
+  }
+  toast(`Checked ${total} proxies: ${healthy} healthy`, healthy > 0 ? 'success' : 'error');
+  prog.style.display = 'none';
+  prog.textContent = '';
+  btn.disabled = false;
+  btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Check All';
+  checkAllRunning = false;
+}
+
+// --- Load ---
+async function loadProxies() {
+  try {
+    const proxies = await api('/admin/api/proxies');
+    allProxies = Array.isArray(proxies) ? proxies : [];
+    renderProxies();
+  } catch (e) {
+    document.getElementById('proxies-tbody').innerHTML = '<tr><td colspan="8"><div class="empty">Failed to load proxies</div></td></tr>';
+  }
+}
+
+// --- Init ---
+loadProxies();
+setInterval(() => { if (!checkAllRunning) loadProxies(); }, 15000);
+</script>
+</body>
+</html>

@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Models — Alibaba Router</title>
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --card: #1a1a1a;
+    --border: #2a2a2a;
+    --border-hover: #3a3a3a;
+    --text: #e4e4e4;
+    --text-dim: #8a8a8a;
+    --text-muted: #5a5a5a;
+    --accent: #00d4ff;
+    --accent-dim: #0099bb;
+    --accent-bg: rgba(0, 212, 255, 0.08);
+    --danger: #ff4757;
+    --danger-bg: rgba(255, 71, 87, 0.1);
+    --success: #2ed573;
+    --success-bg: rgba(46, 213, 115, 0.1);
+    --warning: #ffa502;
+    --warning-bg: rgba(255, 165, 2, 0.1);
+    --mono: 'SF Mono', 'Fira Code', 'Cascadia Code', 'JetBrains Mono', Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+    --radius: 8px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  /* Nav */
+  .nav {
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .nav-inner {
+    max-width: 1200px; margin: 0 auto;
+    display: flex; align-items: center; gap: 8px;
+    padding: 0 24px; height: 52px;
+  }
+  .nav-brand {
+    font-weight: 600; font-size: 15px;
+    color: var(--text); margin-right: 16px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .nav-brand svg { color: var(--accent); }
+  .nav-links { display: flex; gap: 2px; flex: 1; }
+  .nav-link {
+    padding: 6px 14px; border-radius: 6px;
+    color: var(--text-dim); text-decoration: none;
+    font-size: 13px; font-weight: 500;
+    transition: all 0.15s;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .nav-link:hover { color: var(--text); background: rgba(255,255,255,0.04); }
+  .nav-link.active { color: var(--accent); background: var(--accent-bg); }
+  .nav-link svg { opacity: 0.8; }
+
+  /* Layout */
+  .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+  .section { margin-bottom: 32px; }
+  .section-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .section-title {
+    font-size: 14px; font-weight: 600;
+    color: var(--text); display: flex; align-items: center; gap: 8px;
+  }
+  .section-title svg { color: var(--text-dim); }
+  .section-actions { display: flex; gap: 8px; align-items: center; }
+
+  /* Card */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .card-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.04em;
+    color: var(--text-muted);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .card-body { padding: 0; }
+
+  /* Note */
+  .note {
+    background: var(--accent-bg);
+    border: 1px solid rgba(0, 212, 255, 0.2);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    font-size: 12.5px;
+    color: var(--text-dim);
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 16px;
+  }
+  .note svg { color: var(--accent); flex-shrink: 0; }
+  .note strong { color: var(--text); font-weight: 600; }
+
+  /* Search */
+  .search-wrap {
+    position: relative;
+    flex: 1;
+    max-width: 360px;
+  }
+  .search-wrap svg {
+    position: absolute; left: 10px; top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    pointer-events: none;
+  }
+  .search-input {
+    width: 100%;
+    padding: 7px 12px 7px 32px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 13px;
+    transition: border-color 0.15s;
+  }
+  .search-input:focus {
+    outline: none;
+    border-color: var(--accent-dim);
+  }
+  .search-input::placeholder { color: var(--text-muted); }
+
+  /* Table */
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .table-wrap table { min-width: 400px; }
+  .row-actions { display: flex; gap: 4px; justify-content: flex-end; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th {
+    text-align: left; padding: 10px 14px;
+    font-size: 11px; text-transform: uppercase;
+    letter-spacing: 0.04em; color: var(--text-muted);
+    font-weight: 600;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  tbody td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    vertical-align: middle;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: rgba(255,255,255,0.02); }
+  .td-mono { font-family: var(--mono); font-size: 12px; }
+  .td-dim { color: var(--text-dim); }
+  .td-muted { color: var(--text-muted); font-size: 12px; }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px; border-radius: 6px;
+    border: 1px solid var(--border); background: transparent;
+    color: var(--text); font-family: var(--sans); font-size: 12px;
+    font-weight: 500; cursor: pointer;
+    transition: all 0.15s; white-space: nowrap;
+  }
+  .btn:hover { border-color: var(--border-hover); background: rgba(255,255,255,0.04); }
+  .btn svg { flex-shrink: 0; }
+  .btn-primary { border-color: var(--accent-dim); color: var(--accent); background: var(--accent-bg); }
+  .btn-primary:hover { background: rgba(0, 212, 255, 0.15); border-color: var(--accent); }
+  .btn-sm { padding: 4px 8px; font-size: 11px; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn .copied-text { color: var(--success); }
+
+  /* Empty */
+  .empty {
+    padding: 24px 16px; text-align: center;
+    color: var(--text-muted); font-size: 13px;
+  }
+
+  /* Toast */
+  .toast-container {
+    position: fixed; bottom: 24px; right: 24px; z-index: 1000;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .toast {
+    background: var(--card); border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    padding: 10px 16px; border-radius: 6px;
+    font-size: 13px; color: var(--text);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    animation: slideIn 0.2s ease;
+    max-width: 360px;
+  }
+  .toast.success { border-left-color: var(--success); }
+  .toast.error { border-left-color: var(--danger); }
+  @keyframes slideIn {
+    from { transform: translateX(20px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+
+  /* Loading */
+  .loading {
+    display: inline-block; width: 12px; height: 12px;
+    border: 2px solid var(--border); border-top-color: var(--accent);
+    border-radius: 50%; animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Stat pill */
+  .count-pill {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-dim);
+    background: rgba(255,255,255,0.04);
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+
+  /* Responsive */
+  @media (max-width: 600px) {
+    .container { padding: 16px; }
+    .nav-inner { padding: 0 16px; }
+    .nav-brand span { display: none; }
+    .section-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+    .search-wrap { max-width: 100%; }
+    .hide-mobile { display: none; }
+    .table-wrap table { min-width: auto; }
+    .row-actions { flex-direction: column; gap: 2px; }
+    .btn-sm { padding: 3px 6px; font-size: 10px; }
+  }
+
+  /* Hamburger toggle - hidden on desktop */
+  .nav-toggle {
+    display: none;
+    background: none; border: 1px solid var(--border);
+    border-radius: 6px; padding: 6px 8px;
+    cursor: pointer; color: var(--text);
+    margin-left: auto;
+  }
+  .nav-toggle svg { display: block; }
+
+  @media (max-width: 768px) {
+    .nav-toggle { display: block; }
+    .nav-links {
+      display: none;
+      flex-direction: column;
+      position: absolute;
+      top: 52px; left: 0; right: 0;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      padding: 8px 16px 12px;
+      gap: 4px;
+      z-index: 100;
+    }
+    .nav-links.open { display: flex; }
+    .nav-link { padding: 10px 14px; width: 100%; }
+    .nav-inner { position: relative; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav class="nav">
+  <div class="nav-inner">
+    <div class="nav-brand">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="2" y="14" width="20" height="8" rx="2"/><path d="M6.01 18H6M10 18h.01M15 10v4M17.84 7.17a4 4 0 0 0-5.66 0M20.66 4.34a8 8 0 0 0-11.31 0"/>
+      </svg>
+      <span>Alibaba Router</span>
+    </div>
+    <button class="nav-toggle" onclick="toggleNav()" aria-label="Toggle navigation">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <div class="nav-links">
+      <a href="/dashboard.html" class="nav-link">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </a>
+      <a href="/usage.html" class="nav-link">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Usage
+      </a>
+      <a href="/accounts.html" class="nav-link">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Accounts
+      </a>
+      <a href="/models.html" class="nav-link active">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        Models
+      </a>
+      <a href="/proxies.html" class="nav-link">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        Proxies
+      </a>
+      <a href="/farm.html" class="nav-link">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/></svg>
+        Farm
+      </a>
+    </div>
+  </div>
+</nav>
+
+<div class="container">
+
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        Model Catalog
+        <span class="count-pill" id="model-count">—</span>
+      </div>
+      <div class="section-actions">
+        <div class="search-wrap">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" class="search-input" id="search" placeholder="Filter models by name..." autocomplete="off">
+        </div>
+        <button class="btn" id="btn-refresh" onclick="loadModels()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          Refresh
+        </button>
+      </div>
+    </div>
+
+    <div class="note">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+      <span>Router accepts <strong>nalibaba-*</strong> prefixed models. Copy upstream id for reference.</span>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Model ID</th>
+                <th>Upstream ID</th>
+                <th class="hide-mobile">Context Window</th>
+                <th style="width:1%; text-align:right;">Action</th>
+              </tr>
+            </thead>
+            <tbody id="models-tbody">
+              <tr><td colspan="4"><div class="empty">Loading...</div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast-container" id="toasts"></div>
+
+<script>
+const API = '';
+let allModels = [];
+
+// --- Nav toggle (mobile) ---
+function toggleNav() {
+  const links = document.querySelector('.nav-links');
+  links.classList.toggle('open');
+}
+// close nav when clicking a link (mobile)
+document.querySelectorAll('.nav-link').forEach(l => l.addEventListener('click', () => {
+  document.querySelector('.nav-links').classList.remove('open');
+}));
+
+// --- Helpers ---
+function toast(msg, type = '') {
+  const c = document.getElementById('toasts');
+  const t = document.createElement('div');
+  t.className = 'toast ' + type;
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 200); }, 2500);
+}
+
+function escapeHtml(s) {
+  if (s === null || s === undefined) return '';
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function fmtContext(ctx) {
+  if (ctx === null || ctx === undefined || ctx === '') return '—';
+  const n = Number(ctx);
+  if (isNaN(n)) return escapeHtml(ctx);
+  if (n >= 1e6) return (n / 1e6).toFixed(0) + 'M';
+  if (n >= 1e3) return (n / 1e3).toFixed(0) + 'K';
+  return String(n);
+}
+
+async function api(path, opts = {}) {
+  try {
+    const r = await fetch(API + path, {
+      headers: { 'Content-Type': 'application/json' },
+      ...opts
+    });
+    if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+    const ct = r.headers.get('content-type') || '';
+    if (ct.includes('application/json')) return await r.json();
+    return await r.text();
+  } catch (e) {
+    toast('API error: ' + e.message, 'error');
+    throw e;
+  }
+}
+
+// --- Copy upstream id ---
+async function copyUpstream(upstream, btn) {
+  const original = btn.innerHTML;
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(upstream);
+    } else {
+      // Fallback
+      const ta = document.createElement('textarea');
+      ta.value = upstream;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+    btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg><span class="copied-text">Copied!</span>';
+    toast('Copied: ' + upstream, 'success');
+    setTimeout(() => { btn.innerHTML = original; }, 2000);
+  } catch (e) {
+    toast('Copy failed: ' + e.message, 'error');
+    btn.innerHTML = original;
+  }
+}
+
+// --- Render ---
+function renderModels(models) {
+  const tb = document.getElementById('models-tbody');
+  document.getElementById('model-count').textContent = models.length;
+  if (!models || models.length === 0) {
+    tb.innerHTML = '<tr><td colspan="4"><div class="empty">No models found</div></td></tr>';
+    return;
+  }
+  tb.innerHTML = models.map(m => {
+    const upstream = escapeHtml(m.upstream || '');
+    return `
+      <tr>
+        <td class="td-mono" style="color:var(--accent);">${escapeHtml(m.id || '')}</td>
+        <td class="td-mono">${upstream}</td>
+        <td class="td-dim hide-mobile">${fmtContext(m.context)}</td>
+        <td style="text-align:right;">
+          <div class="row-actions">
+            <button class="btn btn-sm btn-primary" onclick="copyUpstream('${upstream}', this)">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              Copy
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function applyFilter() {
+  const q = document.getElementById('search').value.trim().toLowerCase();
+  const filtered = !q ? allModels : allModels.filter(m =>
+    (m.id || '').toLowerCase().includes(q) ||
+    (m.upstream || '').toLowerCase().includes(q)
+  );
+  renderModels(filtered);
+}
+
+// --- Load ---
+async function loadModels() {
+  const btn = document.getElementById('btn-refresh');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="loading"></span> Refresh'; }
+  try {
+    const models = await api('/admin/api/models');
+    allModels = Array.isArray(models) ? models : [];
+    applyFilter();
+  } catch (e) {
+    document.getElementById('models-tbody').innerHTML = '<tr><td colspan="4"><div class="empty">Failed to load models</div></td></tr>';
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg> Refresh'; }
+  }
+}
+
+// --- Init ---
+document.getElementById('search').addEventListener('input', applyFilter);
+loadModels();
+</script>
+</body>
+</html>

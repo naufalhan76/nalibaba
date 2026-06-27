@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Farm Control — Alibaba Router</title>
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --card: #1a1a1a;
+    --border: #2a2a2a;
+    --border-hover: #3a3a3a;
+    --text: #e4e4e4;
+    --text-dim: #8a8a8a;
+    --text-muted: #5a5a5a;
+    --accent: #00d4ff;
+    --accent-dim: #0099bb;
+    --accent-bg: rgba(0, 212, 255, 0.08);
+    --danger: #ff4757;
+    --danger-bg: rgba(255, 71, 87, 0.1);
+    --success: #2ed573;
+    --success-bg: rgba(46, 213, 115, 0.1);
+    --warning: #ffa502;
+    --warning-bg: rgba(255, 165, 2, 0.1);
+    --mono: 'SF Mono', 'Fira Code', 'Cascadia Code', 'JetBrains Mono', Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+    --radius: 8px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Nav */
+  .nav {
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .nav-inner {
+    max-width: 1200px; margin: 0 auto;
+    display: flex; align-items: center; gap: 8px;
+    padding: 0 24px; height: 52px;
+  }
+  .nav-brand {
+    font-weight: 600; font-size: 15px;
+    color: var(--text); margin-right: 16px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .nav-brand svg { color: var(--accent); }
+  .nav-links { display: flex; gap: 2px; flex: 1; }
+  .nav-link {
+    padding: 6px 14px; border-radius: 6px;
+    color: var(--text-dim); text-decoration: none;
+    font-size: 13px; font-weight: 500;
+    transition: all 0.15s;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .nav-link:hover { color: var(--text); background: rgba(255,255,255,0.04); }
+  .nav-link.active { color: var(--accent); background: var(--accent-bg); }
+
+  /* Layout */
+  .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+  .section { margin-bottom: 32px; }
+  .section-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .section-title {
+    font-size: 14px; font-weight: 600;
+    color: var(--text); display: flex; align-items: center; gap: 8px;
+  }
+  .section-title svg { color: var(--text-dim); }
+  .section-actions { display: flex; gap: 8px; align-items: center; }
+
+  /* Grid layout for status + config */
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  /* Card */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .card-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.04em;
+    color: var(--text-muted);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .card-body { padding: 16px; }
+
+  /* Status rows */
+  .status-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .status-row:last-child { border-bottom: none; }
+  .status-label {
+    font-size: 12px; color: var(--text-dim);
+    text-transform: uppercase; letter-spacing: 0.03em;
+  }
+  .status-value {
+    font-family: var(--mono); font-size: 13px;
+    color: var(--text); text-align: right;
+    max-width: 200px; overflow: hidden;
+    text-overflow: ellipsis; white-space: nowrap;
+  }
+
+  /* Badges */
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px; border-radius: 4px;
+    font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.03em;
+  }
+  .badge-active { background: var(--success-bg); color: var(--success); }
+  .badge-stopped { background: rgba(255,255,255,0.06); color: var(--text-muted); }
+  .badge-running { background: var(--success-bg); color: var(--success); }
+  .badge-completed { background: var(--accent-bg); color: var(--accent); }
+  .badge-failed { background: var(--danger-bg); color: var(--danger); }
+  .badge-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: currentColor;
+  }
+  .badge-running .badge-dot {
+    animation: pulse 1.5s ease infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 14px; border-radius: 6px;
+    border: 1px solid var(--border); background: transparent;
+    color: var(--text); font-family: var(--sans); font-size: 12px;
+    font-weight: 500; cursor: pointer;
+    transition: all 0.15s; white-space: nowrap;
+  }
+  .btn:hover { border-color: var(--border-hover); background: rgba(255,255,255,0.04); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-primary { border-color: var(--accent-dim); color: var(--accent); background: var(--accent-bg); }
+  .btn-primary:hover:not(:disabled) { background: rgba(0, 212, 255, 0.15); border-color: var(--accent); }
+  .btn-danger { border-color: rgba(255,71,87,0.3); color: var(--danger); background: var(--danger-bg); }
+  .btn-danger:hover:not(:disabled) { background: rgba(255,71,87,0.2); }
+  .btn-sm { padding: 4px 8px; font-size: 11px; }
+
+  /* Form */
+  .form-group {
+    display: flex; flex-direction: column; gap: 6px;
+    margin-bottom: 14px;
+  }
+  .form-label {
+    font-size: 12px; color: var(--text-dim);
+    text-transform: uppercase; letter-spacing: 0.03em;
+  }
+  .form-input {
+    background: var(--bg); border: 1px solid var(--border);
+    color: var(--text); font-family: var(--mono); font-size: 14px;
+    padding: 8px 12px; border-radius: 6px; width: 100%;
+  }
+  .form-input:focus { outline: none; border-color: var(--accent-dim); }
+  .form-actions { display: flex; gap: 8px; }
+
+  /* Config form grid */
+  .config-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 16px;
+  }
+  .config-grid .form-group { margin-bottom: 12px; }
+  .config-grid .form-group.span-2 { grid-column: 1 / -1; }
+
+  /* Password input with toggle */
+  .input-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+  .input-wrap .form-input { padding-right: 36px; }
+  .input-toggle {
+    position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+    background: transparent; border: none; cursor: pointer;
+    color: var(--text-muted); padding: 4px; display: flex; align-items: center;
+    border-radius: 4px;
+  }
+  .input-toggle:hover { color: var(--text); background: rgba(255,255,255,0.06); }
+  .input-toggle svg { display: block; }
+
+  /* Log panel */
+  .log-panel {
+    background: #0d0d0d;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    height: 420px;
+    overflow-y: auto;
+    padding: 12px;
+    font-family: var(--mono); font-size: 12px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: #b0b0b0;
+  }
+  .log-panel::-webkit-scrollbar { width: 6px; }
+  .log-panel::-webkit-scrollbar-track { background: transparent; }
+  .log-panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  .log-panel::-webkit-scrollbar-thumb:hover { background: var(--border-hover); }
+  .log-line { display: block; }
+  .log-empty { color: var(--text-muted); text-align: center; padding: 40px 0; }
+
+  /* Table */
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .table-wrap table { min-width: 400px; }
+  .row-actions { display: flex; gap: 4px; justify-content: flex-end; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th {
+    text-align: left; padding: 10px 14px;
+    font-size: 11px; text-transform: uppercase;
+    letter-spacing: 0.04em; color: var(--text-muted);
+    font-weight: 600;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  tbody td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    vertical-align: middle;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr { cursor: pointer; transition: background 0.1s; }
+  tbody tr:hover { background: rgba(255,255,255,0.03); }
+  tbody tr.selected { background: var(--accent-bg); }
+  .td-mono { font-family: var(--mono); font-size: 12px; }
+  .td-dim { color: var(--text-dim); }
+  .td-muted { color: var(--text-muted); font-size: 12px; }
+
+  /* Loading spinner */
+  .loading {
+    display: inline-block; width: 12px; height: 12px;
+    border: 2px solid var(--border); border-top-color: var(--accent);
+    border-radius: 50%; animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Toast */
+  .toast-container {
+    position: fixed; bottom: 24px; right: 24px; z-index: 1000;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .toast {
+    background: var(--card); border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    padding: 10px 16px; border-radius: 6px;
+    font-size: 13px; color: var(--text);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    animation: slideIn 0.2s ease;
+    max-width: 360px;
+  }
+  .toast.error { border-left-color: var(--danger); }
+  .toast.success { border-left-color: var(--success); }
+  @keyframes slideIn {
+    from { transform: translateX(20px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+
+  /* Empty */
+  .empty {
+    padding: 32px 16px; text-align: center;
+    color: var(--text-muted); font-size: 13px;
+  }
+
+  /* Toggle switch (proxy pool) */
+  .toggle-switch-wrap {
+    display: flex; align-items: center; gap: 10px;
+    margin-top: 2px;
+  }
+  .toggle-switch {
+    position: relative; display: inline-block;
+    width: 40px; height: 22px; flex-shrink: 0;
+  }
+  .toggle-switch input { opacity: 0; width: 0; height: 0; }
+  .toggle-slider {
+    position: absolute; cursor: pointer; inset: 0;
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 22px; transition: all 0.2s;
+  }
+  .toggle-slider::before {
+    content: ''; position: absolute;
+    width: 14px; height: 14px; left: 3px; top: 50%;
+    transform: translateY(-50%);
+    background: var(--text-muted); border-radius: 50%;
+    transition: all 0.2s;
+  }
+  .toggle-switch input:checked + .toggle-slider {
+    background: var(--accent-bg); border-color: var(--accent-dim);
+  }
+  .toggle-switch input:checked + .toggle-slider::before {
+    transform: translate(16px, -50%); background: var(--accent);
+  }
+  .toggle-label {
+    font-size: 13px; color: var(--text-dim); font-weight: 500;
+  }
+
+  /* Tutorial / Setup Guide */
+  .tutorial-details {
+    margin-top: 16px; border: 1px solid var(--border);
+    border-radius: 6px; background: var(--bg); overflow: hidden;
+  }
+  .tutorial-details[open] .tutorial-summary .chevron { transform: rotate(180deg); }
+  .tutorial-summary {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 14px; cursor: pointer;
+    font-size: 13px; font-weight: 600; color: var(--text);
+    user-select: none; list-style: none;
+  }
+  .tutorial-summary::-webkit-details-marker { display: none; }
+  .tutorial-summary svg { color: var(--accent); flex-shrink: 0; }
+  .tutorial-summary .chevron {
+    margin-left: auto; color: var(--text-muted);
+    transition: transform 0.2s;
+  }
+  .tutorial-summary:hover { background: rgba(255,255,255,0.03); }
+  .tutorial-content {
+    padding: 0 16px 14px 16px;
+    border-top: 1px solid var(--border);
+  }
+  .tutorial-block { margin-top: 14px; }
+  .tutorial-block h4 {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 13px; font-weight: 600; color: var(--text);
+    margin-bottom: 8px;
+  }
+  .tutorial-block h4 svg { color: var(--accent-dim); flex-shrink: 0; }
+  .tutorial-block ol {
+    margin: 0; padding-left: 20px;
+    color: var(--text-dim); font-size: 13px; line-height: 1.7;
+  }
+  .tutorial-block ol li { margin-bottom: 4px; }
+  .tutorial-block ol li:last-child { margin-bottom: 0; }
+  .tutorial-block .arrow { color: var(--text-muted); }
+  .tutorial-block code {
+    font-family: var(--mono); font-size: 12px;
+    background: #222; color: var(--accent);
+    padding: 1px 6px; border-radius: 3px;
+    border: 1px solid var(--border);
+  }
+
+  /* Responsive */
+  @media (max-width: 800px) {
+    .grid-2 { grid-template-columns: 1fr; }
+    .config-grid { grid-template-columns: 1fr; }
+    .table-wrap { overflow-x: auto; }
+  }
+  @media (max-width: 600px) {
+    .container { padding: 16px; }
+    .nav-inner { padding: 0 16px; }
+    .nav-brand span { display: none; }
+    .log-panel { height: 300px; }
+    .hide-mobile { display: none; }
+    .table-wrap table { min-width: auto; }
+    .row-actions { flex-direction: column; gap: 2px; }
+    .btn-sm { padding: 3px 6px; font-size: 10px; }
+  }
+
+  /* Hamburger toggle - hidden on desktop */
+  .nav-toggle {
+    display: none;
+    background: none; border: 1px solid var(--border);
+    border-radius: 6px; padding: 6px 8px;
+    cursor: pointer; color: var(--text);
+    margin-left: auto;
+  }
+  .nav-toggle svg { display: block; }
+
+  @media (max-width: 800px) {
+    .nav-toggle { display: block; }
+    .nav-links {
+      display: none;
+      flex-direction: column;
+      position: absolute;
+      top: 52px; left: 0; right: 0;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      padding: 8px 16px 12px;
+      gap: 4px;
+      z-index: 100;
+    }
+    .nav-links.open { display: flex; }
+    .nav-link { padding: 10px 14px; width: 100%; }
+    .nav-inner { position: relative; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav class="nav">
+  <div class="nav-inner">
+    <div class="nav-brand">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="2" y="14" width="20" height="8" rx="2"/><path d="M6.01 18H6M10 18h.01M15 10v4M17.84 7.17a4 4 0 0 0-5.66 0M20.66 4.34a8 8 0 0 0-11.31 0"/>
+      </svg>
+      <span>Alibaba Router</span>
+    </div>
+    <button class="nav-toggle" onclick="toggleNav()" aria-label="Toggle navigation">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <div class="nav-links">
+      <a href="/dashboard.html" class="nav-link">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </a>
+      <a href="/usage.html" class="nav-link">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Usage
+      </a>
+      <a href="/accounts.html" class="nav-link">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Accounts
+      </a>
+      <a href="/models.html" class="nav-link">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        Models
+      </a>
+      <a href="/proxies.html" class="nav-link">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        Proxies
+      </a>
+      <a href="/farm.html" class="nav-link active">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/></svg>
+        Farm
+      </a>
+    </div>
+  </div>
+</nav>
+
+<div class="container">
+
+  <!-- Farm Configuration -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Farm Configuration
+      </div>
+      <div class="section-actions">
+        <button class="btn btn-sm" onclick="loadFarmConfig()" id="btn-reload-config">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          Reload
+        </button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-body">
+        <div class="config-grid">
+          <div class="form-group">
+            <label class="form-label" for="cfg-imap-user">IMAP User (Gmail)</label>
+            <input type="email" class="form-input" id="cfg-imap-user" placeholder="you@gmail.com" autocomplete="off">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="cfg-imap-pass">IMAP Password (App Password)</label>
+            <div class="input-wrap">
+              <input type="password" class="form-input" id="cfg-imap-pass" placeholder="Gmail App Password" autocomplete="new-password">
+              <button type="button" class="input-toggle" onclick="togglePw('cfg-imap-pass', this)" aria-label="Toggle password visibility">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="eye-show"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="eye-hide" style="display:none;"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="cfg-email-domain">Email Domain (catch-all)</label>
+            <input type="text" class="form-input" id="cfg-email-domain" placeholder="yourdomain.com" autocomplete="off">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="cfg-max-attempts">Max Attempts</label>
+            <input type="number" class="form-input" id="cfg-max-attempts" value="10" min="1" max="100">
+          </div>
+          <div class="form-group span-2">
+            <label class="form-label" for="cfg-proxy-toggle">Route farm via proxy pool</label>
+            <div class="toggle-switch-wrap">
+              <label class="toggle-switch">
+                <input type="checkbox" id="cfg-proxy-toggle" onchange="updateProxyToggleLabel(this.checked)">
+                <span class="toggle-slider"></span>
+              </label>
+              <span class="toggle-label" id="cfg-proxy-label">Direct (no proxy)</span>
+            </div>
+          </div>
+          <!-- Hidden fields: sent to backend but not displayed -->
+          <input type="hidden" id="cfg-imap-host" value="imap.gmail.com">
+          <input type="hidden" id="cfg-imap-port" value="993">
+          <input type="hidden" id="cfg-farm-proxy" value="">
+          <input type="hidden" id="cfg-results-file" value="results.json">
+        </div>
+        <div class="form-actions" style="margin-top: 4px;">
+          <button class="btn btn-primary" onclick="saveFarmConfig()" id="btn-save-config">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            Save Config
+          </button>
+        </div>
+
+        <!-- Setup Guide (collapsible) -->
+        <details class="tutorial-details">
+          <summary class="tutorial-summary">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+            <span>Setup Guide</span>
+            <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </summary>
+          <div class="tutorial-content">
+            <div class="tutorial-block">
+              <h4>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 5L2 7"/></svg>
+                Gmail App Password (for IMAP)
+              </h4>
+              <ol>
+                <li>Enable 2-Step Verification: Google Account <span class="arrow">→</span> Security <span class="arrow">→</span> 2-Step Verification <span class="arrow">→</span> Turn on</li>
+                <li>Generate App Password: Google Account <span class="arrow">→</span> Security <span class="arrow">→</span> App passwords</li>
+                <li>Select "Mail" as app, "Other" as device (name it "Farm")</li>
+                <li>Copy the 16-char password (format: <code>abcd efgh ijkl mnop</code>) <span class="arrow">—</span> paste into IMAP Password field above</li>
+                <li>Note: This is NOT your Gmail login password. App Passwords bypass 2FA for IMAP access.</li>
+              </ol>
+            </div>
+            <div class="tutorial-block">
+              <h4>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9z"/></svg>
+                Cloudflare Catch-all Email Domain
+              </h4>
+              <ol>
+                <li>Go to Cloudflare Dashboard <span class="arrow">→</span> select your domain <span class="arrow">→</span> Email <span class="arrow">→</span> Email Routing</li>
+                <li>Enable Email Routing (follow DNS setup prompts <span class="arrow">—</span> Cloudflare adds MX records automatically)</li>
+                <li>Go to Routing Rules <span class="arrow">→</span> Catch-all address <span class="arrow">→</span> Edit</li>
+                <li>Set action: "Send to destination" <span class="arrow">→</span> enter your Gmail address</li>
+                <li>Save. Now any email sent to <code>*@yourdomain.com</code> forwards to your Gmail.</li>
+                <li>Use this domain in the "Email Domain" field above (e.g. <code>yourdomain.com</code>)</li>
+                <li>The farm generates random addresses like <code>abc123@yourdomain.com</code> <span class="arrow">—</span> all forward to your Gmail, and farm.py reads OTPs via IMAP.</li>
+              </ol>
+            </div>
+          </div>
+        </details>
+      </div>
+    </div>
+  </div>
+
+  <!-- Status + Controls -->
+  <div class="grid-2" style="margin-bottom: 32px;">
+    <!-- Status card -->
+    <div class="card">
+      <div class="card-header">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        Status
+      </div>
+      <div class="card-body" id="status-body">
+        <div class="status-row">
+          <span class="status-label">Running</span>
+          <span id="status-running"><span class="badge badge-stopped"><span class="badge-dot"></span>Unknown</span></span>
+        </div>
+        <div class="status-row">
+          <span class="status-label">PID</span>
+          <span class="status-value" id="status-pid">—</span>
+        </div>
+        <div class="status-row">
+          <span class="status-label">Run ID</span>
+          <span class="status-value" id="status-run-id">—</span>
+        </div>
+        <div class="status-row">
+          <span class="status-label">Log Path</span>
+          <span class="status-value" id="status-log-path" title="">—</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Controls card -->
+    <div class="card">
+      <div class="card-header">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
+        Controls
+      </div>
+      <div class="card-body">
+        <div class="form-actions">
+          <button class="btn btn-primary" onclick="startFarm()" id="btn-start">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Start Farm
+          </button>
+          <button class="btn btn-danger" onclick="stopFarm()" id="btn-stop">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
+            Stop Farm
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Live log -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        Live Log
+        <span id="log-title" style="font-weight:400;color:var(--text-muted);font-size:12px;margin-left:4px;"></span>
+      </div>
+      <div class="section-actions">
+        <button class="btn btn-sm" onclick="clearLogView()">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          Clear View
+        </button>
+        <button class="btn btn-sm" onclick="toggleAutoScroll()" id="btn-autoscroll">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="19 12 12 19 5 12"/><line x1="12" y1="5" x2="12" y2="19"/></svg>
+          Auto-Scroll: ON
+        </button>
+      </div>
+    </div>
+    <div class="log-panel" id="log-panel">
+      <div class="log-empty">No log output. Start the farm to see live logs.</div>
+    </div>
+  </div>
+
+  <!-- Run history -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Run History
+      </div>
+      <div class="section-actions">
+        <button class="btn btn-sm" onclick="loadRuns()">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          Refresh
+        </button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th><th>Started</th><th class="hide-mobile">Ended</th><th>Status</th><th class="hide-mobile">Max Attempts</th><th>New Accounts</th>
+            </tr>
+          </thead>
+          <tbody id="runs-tbody">
+            <tr><td colspan="6"><div class="empty">Loading...</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast-container" id="toasts"></div>
+
+<script>
+const API = '';
+
+// --- Nav toggle (mobile) ---
+function toggleNav() {
+  const links = document.querySelector('.nav-links');
+  links.classList.toggle('open');
+}
+// close nav when clicking a link (mobile)
+document.querySelectorAll('.nav-link').forEach(l => l.addEventListener('click', () => {
+  document.querySelector('.nav-links').classList.remove('open');
+}));
+let currentStatus = null;
+let selectedRunId = null;
+let selectedLogPath = null;
+let autoScroll = true;
+let logPolling = false;
+
+// --- Helpers ---
+function toast(msg, type = '') {
+  const c = document.getElementById('toasts');
+  const t = document.createElement('div');
+  t.className = 'toast ' + type;
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 200); }, 3000);
+}
+
+function fmtDate(d) {
+  if (!d) return '—';
+  const date = new Date(d);
+  if (isNaN(date)) return d;
+  return date.toLocaleString('en-US', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit', second:'2-digit' });
+}
+
+function escapeHtml(s) {
+  if (s === null || s === undefined) return '';
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+async function api(path, opts = {}) {
+  try {
+    const r = await fetch(API + path, {
+      headers: { 'Content-Type': 'application/json' },
+      ...opts
+    });
+    if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+    const ct = r.headers.get('content-type') || '';
+    if (ct.includes('application/json')) return await r.json();
+    return await r.text();
+  } catch (e) {
+    toast('API error: ' + e.message, 'error');
+    throw e;
+  }
+}
+
+function statusBadge(running) {
+  if (running) return '<span class="badge badge-running"><span class="badge-dot"></span>Running</span>';
+  return '<span class="badge badge-stopped"><span class="badge-dot"></span>Stopped</span>';
+}
+
+function runStatusBadge(status) {
+  const s = (status || '').toLowerCase();
+  if (s === 'running') return '<span class="badge badge-running"><span class="badge-dot"></span>Running</span>';
+  if (s === 'completed') return '<span class="badge badge-completed"><span class="badge-dot"></span>Completed</span>';
+  if (s === 'failed') return '<span class="badge badge-failed"><span class="badge-dot"></span>Failed</span>';
+  if (s === 'stopped') return '<span class="badge badge-stopped"><span class="badge-dot"></span>Stopped</span>';
+  return '<span class="badge badge-stopped"><span class="badge-dot"></span>' + escapeHtml(status || 'Unknown') + '</span>';
+}
+
+// --- Status ---
+async function loadStatus() {
+  try {
+    const s = await api('/admin/api/farm/status');
+    currentStatus = s;
+    document.getElementById('status-running').innerHTML = statusBadge(s.running);
+    document.getElementById('status-pid').textContent = s.pid ?? '—';
+    document.getElementById('status-run-id').textContent = s.run_id ?? '—';
+    const logPathEl = document.getElementById('status-log-path');
+    logPathEl.textContent = s.log_path ?? '—';
+    logPathEl.title = s.log_path ?? '';
+
+    // Enable/disable buttons
+    document.getElementById('btn-start').disabled = s.running;
+    document.getElementById('btn-stop').disabled = !s.running;
+
+    // Start/stop log polling
+    if (s.running && !logPolling) {
+      logPolling = true;
+      selectedLogPath = s.log_path;
+      pollLog();
+    } else if (!s.running) {
+      logPolling = false;
+    }
+  } catch (e) {}
+}
+
+// --- Password toggle ---
+function togglePw(inputId, btn) {
+  const inp = document.getElementById(inputId);
+  const showEye = btn.querySelector('.eye-show');
+  const hideEye = btn.querySelector('.eye-hide');
+  if (inp.type === 'password') {
+    inp.type = 'text';
+    showEye.style.display = 'none';
+    hideEye.style.display = '';
+  } else {
+    inp.type = 'password';
+    showEye.style.display = '';
+    hideEye.style.display = 'none';
+  }
+}
+
+// --- Farm Config ---
+const CONFIG_FIELDS = ['IMAP_USER','IMAP_PASS','EMAIL_DOMAIN','IMAP_HOST','IMAP_PORT','FARM_PROXY','MAX_ATTEMPTS','RESULTS_FILE'];
+const CONFIG_INPUT_MAP = {
+  IMAP_USER: 'cfg-imap-user',
+  IMAP_PASS: 'cfg-imap-pass',
+  EMAIL_DOMAIN: 'cfg-email-domain',
+  IMAP_HOST: 'cfg-imap-host',
+  IMAP_PORT: 'cfg-imap-port',
+  FARM_PROXY: 'cfg-farm-proxy',
+  MAX_ATTEMPTS: 'cfg-max-attempts',
+  RESULTS_FILE: 'cfg-results-file'
+};
+
+async function loadFarmConfig() {
+  const btn = document.getElementById('btn-reload-config');
+  if (btn) { btn.disabled = true; }
+  try {
+    const cfg = await api('/admin/api/farm/config');
+    for (const key of CONFIG_FIELDS) {
+      const el = document.getElementById(CONFIG_INPUT_MAP[key]);
+      if (!el) continue;
+      const v = cfg[key];
+      if (key === 'FARM_PROXY') {
+        // Toggle ON if value === "pool", else OFF
+        const toggle = document.getElementById('cfg-proxy-toggle');
+        const isPool = (v === 'pool');
+        toggle.checked = isPool;
+        updateProxyToggleLabel(isPool);
+        continue;
+      }
+      if (v !== null && v !== undefined) {
+        el.value = v;
+      }
+    }
+  } catch (e) {
+    // silent — config endpoint may not be available yet
+  } finally {
+    if (btn) { btn.disabled = false; }
+  }
+}
+
+function updateProxyToggleLabel(isPool) {
+  const label = document.getElementById('cfg-proxy-label');
+  if (!label) return;
+  label.textContent = isPool ? 'Pool (proxied)' : 'Direct (no proxy)';
+}
+
+async function saveFarmConfig() {
+  const btn = document.getElementById('btn-save-config');
+  const orig = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loading"></span> Saving...';
+  try {
+    // Sync toggle state into hidden FARM_PROXY field before collecting
+    const toggle = document.getElementById('cfg-proxy-toggle');
+    document.getElementById('cfg-farm-proxy').value = toggle.checked ? 'pool' : '';
+
+    const payload = {};
+    for (const key of CONFIG_FIELDS) {
+      const el = document.getElementById(CONFIG_INPUT_MAP[key]);
+      if (!el) continue;
+      let val = el.value;
+      if (key === 'IMAP_PORT' || key === 'MAX_ATTEMPTS') {
+        val = parseInt(val) || 0;
+      }
+      payload[key] = val;
+    }
+    await api('/admin/api/farm/config', { method: 'POST', body: JSON.stringify(payload) });
+    toast('Configuration saved', 'success');
+  } catch (e) {
+    toast('Failed to save configuration', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = orig;
+  }
+}
+
+// --- Start / Stop ---
+async function startFarm() {
+  const maxAttempts = parseInt(document.getElementById('cfg-max-attempts').value) || 10;
+  const btn = document.getElementById('btn-start');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loading"></span> Starting...';
+  try {
+    const r = await api('/admin/api/farm/start', { method: 'POST', body: JSON.stringify({ max_attempts: maxAttempts }) });
+    toast('Farm started — run ' + (r.run_id ?? ''), 'success');
+    selectedLogPath = r.log_path;
+    selectedRunId = null;
+    await loadStatus();
+    await loadRuns();
+    // immediately fetch log
+    logPolling = true;
+    pollLog();
+  } catch (e) {
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg> Start Farm';
+  }
+}
+
+async function stopFarm() {
+  const btn = document.getElementById('btn-stop');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loading"></span> Stopping...';
+  try {
+    await api('/admin/api/farm/stop', { method: 'POST', body: JSON.stringify({}) });
+    toast('Farm stopped', 'success');
+    logPolling = false;
+    await loadStatus();
+    await loadRuns();
+  } catch (e) {
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="6" width="12" height="12" rx="1"/></svg> Stop Farm';
+  }
+}
+
+// --- Log ---
+async function pollLog() {
+  if (!logPolling && !selectedLogPath) return;
+  if (!selectedLogPath) return;
+  try {
+    const log = await api('/admin/api/farm/log?path=' + encodeURIComponent(selectedLogPath));
+    const panel = document.getElementById('log-panel');
+    if (typeof log === 'string' && log.trim()) {
+      panel.innerHTML = '';
+      const lines = log.split('\n');
+      for (const line of lines) {
+        const span = document.createElement('span');
+        span.className = 'log-line';
+        span.textContent = line;
+        panel.appendChild(span);
+      }
+      if (autoScroll) {
+        panel.scrollTop = panel.scrollHeight;
+      }
+    } else if (typeof log === 'string') {
+      // empty log, keep previous
+    }
+  } catch (e) {}
+}
+
+function startLogPolling() {
+  // called on interval
+}
+
+function clearLogView() {
+  const panel = document.getElementById('log-panel');
+  panel.innerHTML = '<div class="log-empty">Log cleared.</div>';
+}
+
+function toggleAutoScroll() {
+  autoScroll = !autoScroll;
+  const btn = document.getElementById('btn-autoscroll');
+  btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="19 12 12 19 5 12"/><line x1="12" y1="5" x2="12" y2="19"/></svg> Auto-Scroll: ' + (autoScroll ? 'ON' : 'OFF');
+  if (autoScroll) {
+    const panel = document.getElementById('log-panel');
+    panel.scrollTop = panel.scrollHeight;
+  }
+}
+
+// --- Runs ---
+async function loadRuns() {
+  try {
+    const runs = await api('/admin/api/farm/runs?limit=20');
+    const tb = document.getElementById('runs-tbody');
+    if (!runs || runs.length === 0) {
+      tb.innerHTML = '<tr><td colspan="6"><div class="empty">No runs yet</div></td></tr>';
+      return;
+    }
+    tb.innerHTML = runs.map(r => {
+      const sel = (selectedRunId !== null && String(r.id) === String(selectedRunId)) ? 'selected' : '';
+      return `
+        <tr class="${sel}" onclick="selectRun(${r.id}, ${escapeHtml(JSON.stringify(r.log_path || ''))})">
+          <td class="td-mono td-muted">${escapeHtml(String(r.id ?? '—'))}</td>
+          <td class="td-muted">${fmtDate(r.started_at)}</td>
+          <td class="td-muted hide-mobile">${fmtDate(r.ended_at)}</td>
+          <td>${runStatusBadge(r.status)}</td>
+          <td class="td-mono hide-mobile">${escapeHtml(String(r.max_attempts ?? '—'))}</td>
+          <td class="td-mono">${escapeHtml(String(r.new_accounts ?? '—'))}</td>
+        </tr>
+      `;
+    }).join('');
+  } catch (e) {}
+}
+
+function selectRun(runId, logPath) {
+  selectedRunId = runId;
+  selectedLogPath = logPath || null;
+  logPolling = false; // stop live polling when viewing history
+  document.getElementById('log-title').textContent = '— Run #' + runId;
+  loadRuns(); // re-render with selection highlight
+  pollLog(); // load log for this run
+}
+
+// --- Init ---
+async function init() {
+  loadFarmConfig(); // fire-and-forget; non-blocking
+  await Promise.all([loadStatus(), loadRuns()]);
+  // After initial status load, if running, start log polling
+  if (currentStatus && currentStatus.running && currentStatus.log_path) {
+    selectedLogPath = currentStatus.log_path;
+    logPolling = true;
+    pollLog();
+  }
+}
+
+init();
+
+// Poll status every 3s
+setInterval(loadStatus, 3000);
+
+// Poll log every 3s (pollLog checks if we have a path)
+setInterval(() => {
+  if (selectedLogPath && (logPolling || (currentStatus && currentStatus.running && selectedLogPath === currentStatus.log_path))) {
+    pollLog();
+  }
+}, 3000);
+</script>
+</body>
+</html>

@@ -1,0 +1,39 @@
+# Binary
+bin/
+*.exe
+
+# Data (sensitive — accounts, API keys, proxy list, DB)
+data/
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+logs/
+
+# Environment & credentials
+.env
+*.env
+credentials.json
+
+# Farm account data (contains API keys)
+results.json
+apikey_check_results.json
+apikey_check_intl_results.json
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
