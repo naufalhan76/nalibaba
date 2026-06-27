@@ -4,13 +4,15 @@ A high-performance **0penAI-compatible LLM router** for Alibaba Cloud Model Stud
 
 ## Installation
 
-### For LLM
+### For LLM Agents
 
-Paste the prompt below into an AI coding agent (Code Assistant, Codex, Cursor, Claude, etc.) on a Linux VPS — it will clone, build, configure, and launch the router automatically:
+Fetch the full guide and follow it step by step:
 
-> **See [`INSTALL.md`](./INSTALL.md)** for the full copy-paste prompt. Copy everything inside the code block and paste it into the AI agent.
+```bash
+curl -fsSL https://raw.githubusercontent.com/naufalhan76/nalibaba/main/INSTALL.md
+```
 
-The prompt is self-contained and covers all 12 steps: Go install, clone, build, account import, systemd service, key generation, and verification — with per-step checks. The AI agent will execute each command and verify before continuing.
+The guide covers: Go installation, repository clone, dependency download, binary build, account import from results.json, systemd service setup, router key generation, API verification, optional Cloudflare Tunnel exposure, farm configuration (Camoufox + IMAP), and troubleshooting. Don't summarize it; read it end to end and execute every step with verification.
 
 ### For Human
 
