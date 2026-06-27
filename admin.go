@@ -317,8 +317,8 @@ func (a *AdminHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if body.NewPassword == "" || len(body.NewPassword) < 4 {
-		writeJSON(w, 400, map[string]string{"error": "new password must be at least 4 characters"})
+	if body.NewPassword == "" || len(body.NewPassword) < 1 {
+		writeJSON(w, 400, map[string]string{"error": "new password must be at least 1 character"})
 		return
 	}
 

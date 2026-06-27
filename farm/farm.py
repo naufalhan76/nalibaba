@@ -64,9 +64,16 @@ try:
 except ImportError:
     pass
 
-# When dot trick is enabled, use IMAP_USER's domain (gmail.com) instead of EMAIL_DOMAIN
-if DOT_TRICK_ENABLED and not EMAIL_DOMAIN:
-    # Extract domain from IMAP_USER (e.g. "user@gmail.com" → "gmail.com")
+# Gmail trick configuration
+# When any trick is enabled, use IMAP_USER's domain (gmail.com) instead of EMAIL_DOMAIN
+GMAIL_TRICK_PLUS = os.environ.get("GMAIL_TRICK_PLUS", "0") == "1"
+GMAIL_TRICK_DOT = os.environ.get("GMAIL_TRICK_DOT", "0") == "1"
+GMAIL_TRICK_CASE_USERNAME = os.environ.get("GMAIL_TRICK_CASE_USERNAME", "0") == "1"
+GMAIL_TRICK_CASE_DOMAIN = os.environ.get("GMAIL_TRICK_CASE_DOMAIN", "0") == "1"
+ANY_GMAIL_TRICK = GMAIL_TRICK_PLUS or GMAIL_TRICK_DOT or GMAIL_TRICK_CASE_USERNAME or GMAIL_TRICK_CASE_DOMAIN
+
+# When Gmail tricks are enabled, use IMAP_USER's domain
+if ANY_GMAIL_TRICK and not EMAIL_DOMAIN:
     EMAIL_DOMAIN = IMAP_USER.split("@")[-1] if "@" in IMAP_USER else ""
 
 # Validate required config
@@ -77,19 +84,20 @@ if not IMAP_USER or not IMAP_PASS or not EMAIL_DOMAIN:
     print("Set these environment variables (or create a .env file):")
     print("  IMAP_USER=your@gmail.com")
     print("  IMAP_PASS=your-app-password")
-    if not DOT_TRICK_ENABLED:
+    if not ANY_GMAIL_TRICK:
         print("  EMAIL_DOMAIN=your-catchall-domain.com")
     print()
     print("For Gmail App Passwords:")
     print(" 1. Enable 2FA: Google Account → Security → 2-Step Verification")
     print(" 2. Generate:   Google Account → Security → App passwords")
     print()
-    if not DOT_TRICK_ENABLED:
+    if not ANY_GMAIL_TRICK:
         print("For catch-all domain:")
         print("  Set up email forwarding for *@yourdomain.com → your@gmail.com")
         print("  (e.g. Cloudflare Email Routing, ImprovMX, etc.)")
     print()
-    print("  Or enable DOT_TRICK_ENABLED=1 to use Gmail dot trick instead.")
+    print("  Or enable Gmail tricks (DOT_TRICK_ENABLED=1 or GMAIL_TRICK_PLUS=1, etc.)")
+    print("  to use Gmail's built-in email variations without a custom domain.")
     print("=" * 60)
     sys.exit(1)
 
@@ -100,29 +108,39 @@ RESULTS_FILE = os.environ.get("RESULTS_FILE", "results.json")
 MODELSTUDIO_URL = "https://modelstudio.console.alibabacloud.com/"
 
 def generate_email():
-    """Generate a random email address for registration."""
+    """Generate a random email address for registration using Gmail tricks."""
+    username = IMAP_USER.split("@")[0]
+    domain = IMAP_USER.split("@")[-1]  # gmail.com
+    
+    result_username = username
+    result_domain = domain
+    
+    # When DOT_TRICK_ENABLED, randomly combine all Gmail tricks
     if DOT_TRICK_ENABLED:
-        # Gmail dot trick: Gmail ignores dots in username
-        # e.g. "johndoe@gmail.com" = "g.arnasun514@gmail.com" = "ga.rnasun514@gmail.com"
-        # So we can generate multiple variations, all deliver to same inbox
-        username = IMAP_USER.split("@")[0]
-        domain = IMAP_USER.split("@")[-1]  # gmail.com
-        
-        # Randomly insert dots at different positions
+        # Always apply dot trick (40% chance per position)
         chars = list(username)
-        dotted = [chars[0]]  # Start with first char
-        
-        # For each subsequent char, randomly decide whether to add a dot before it
+        dotted = [chars[0]]
         for char in chars[1:]:
-            if random.random() < 0.4:  # 40% chance to insert dot
+            if random.random() < 0.4:
                 dotted.append('.')
             dotted.append(char)
+        result_username = ''.join(dotted)
         
-        return f"{''.join(dotted)}@{domain}"
-    else:
-        # Normal mode: generate random name with catch-all domain
-        name = ''.join(random.choices(string.ascii_lowercase + string.digits, k=10))
-        return f"{name}@{EMAIL_DOMAIN}"
+        # 70% chance: plus method with random suffix
+        if random.random() < 0.7:
+            suffix_length = random.randint(5, 30)
+            suffix = ''.join(random.choices(string.ascii_lowercase + string.digits, k=suffix_length))
+            result_username = result_username + "+" + suffix
+        
+        # 50% chance: random case username
+        if random.random() < 0.5:
+            result_username = ''.join([c.upper() if random.random() > 0.5 else c.lower() for c in result_username])
+        
+        # 50% chance: random case domain
+        if random.random() < 0.5:
+            result_domain = ''.join([c.upper() if random.random() > 0.5 else c.lower() for c in result_domain])
+    
+    return f"{result_username}@{result_domain}"
 
 def generate_password():
     """Password: letters + digits only, no special chars (causes type issues)."""
