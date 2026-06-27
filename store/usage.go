@@ -241,8 +241,8 @@ func (s *Store) ListModels() []ModelDef {
 }
 
 
-// InsertRequestLog adds a new request log entry
-func (s *Store) InsertRequestLog(accountID int64, accountEmail, model, requestBody, responseBody, proxyURL, errorMessage string, durationMs int) error {
+// InsertRequestLog adds a new request log entry and returns the log ID
+func (s *Store) InsertRequestLog(accountID int64, accountEmail, model, requestBody, responseBody, proxyURL, errorMessage string, durationMs int) (int64, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	
@@ -254,9 +254,26 @@ func (s *Store) InsertRequestLog(accountID int64, accountEmail, model, requestBo
 		responseBody = responseBody[:2000] + "...(truncated)"
 	}
 	
-	_, err := s.db.Exec(`
+	res, err := s.db.Exec(`
 		INSERT INTO request_logs (account_id, account_email, model, request_body, response_body, proxy_url, error_message, duration_ms)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, accountID, accountEmail, model, requestBody, responseBody, proxyURL, errorMessage, durationMs)
+	if err != nil {
+		return 0, err
+	}
+	return res.LastInsertId()
+}
+
+// UpdateRequestLogResponse updates the response body for an existing request log (used for streaming)
+func (s *Store) UpdateRequestLogResponse(id int64, responseBody string, durationMs int) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	
+	if len(responseBody) > 2000 {
+		responseBody = responseBody[:2000] + "...(truncated)"
+	}
+	
+	_, err := s.db.Exec(`UPDATE request_logs SET response_body = ?, duration_ms = ? WHERE id = ?`,
+		responseBody, durationMs, id)
 	return err
 }
 

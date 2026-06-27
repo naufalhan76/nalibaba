@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"alibaba-router/store"
 )
@@ -130,6 +131,11 @@ func (h *Handler) proxyStream(w http.ResponseWriter, result *RouteResult, model 
 		return
 	}
 	w.WriteHeader(200)
+	
+	// Buffer response chunks for logging
+	var responseBuffer strings.Builder
+	start := time.Now()
+	
 	scanner := bufio.NewScanner(result.StreamResp.Body)
 	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 	for scanner.Scan() {
@@ -137,6 +143,9 @@ func (h *Handler) proxyStream(w http.ResponseWriter, result *RouteResult, model 
 		// write line + newline
 		w.Write(line)
 		w.Write([]byte("\n"))
+		// buffer for logging
+		responseBuffer.Write(line)
+		responseBuffer.WriteByte('\n')
 		// check for usage in data lines
 		if bytes.HasPrefix(line, []byte("data: ")) {
 			dataJSON := bytes.TrimPrefix(line, []byte("data: "))
@@ -152,5 +161,11 @@ func (h *Handler) proxyStream(w http.ResponseWriter, result *RouteResult, model 
 			}
 		}
 		flusher.Flush()
+	}
+	
+	// Update request log with buffered response
+	if result.LogID > 0 {
+		durationMs := int(time.Since(start).Milliseconds())
+		h.store.UpdateRequestLogResponse(result.LogID, responseBuffer.String(), durationMs)
 	}
 }

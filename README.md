@@ -69,19 +69,23 @@ Alibaba Cloud Model Studio gives each account a **1M token quota per model** (no
 - Slider/captcha detection with retry
 - Configurable via web UI (IMAP creds, domain, max attempts, proxy toggle)
 
-### Web Dashboard (6 pages)
-- **Dashboard** — stats overview, router keys (generate/copy/revoke), quick health
-- **Usage** — per-(account, model) token tracking, filter by model/status, reset slots
+### Web Dashboard (8 pages)
+- **Dashboard** — stats overview, base URL, usage chart (line per model), top 5 models, router keys (generate/copy/revoke), quick health
+- **Usage** — individual request logs (newest first), expandable detail rows with full request/response JSON, proxy column, auto-refresh
 - **Accounts** — import from results.json, pagination, dead account management
 - **Models** — 35 model catalog with copy upstream ID, search
 - **Proxies** — add/check-all/delete, region & latency display
-- **Farm** — config form (IMAP, domain, proxy toggle), start/stop, live log, run history, setup guide
+- **Farm** — config form (IMAP, dot trick toggle, domain, proxy toggle), start/stop, live log, run history with success/fail counts, setup guide
+- **Settings** — proxy toggle for upstream, routing method (round-robin/sticky), change password
+- **Login** — session-based authentication with default password hint
 
 ### Security & Deployment
+- **Session-based authentication** — default password `123456`, change via Settings page
 - **No Docker** — single Go binary + systemd service (survives reboot, auto-restart)
 - Router API keys with `nh-*` prefix, generate/regenerate/revoke via web
 - Cloudflare tunnel support
 - SQLite storage (WAL mode, single-writer)
+- **Request logging** — every API request logged with full request/response body (streaming responses buffered and captured)
 
 ## Tech Stack
 
@@ -120,6 +124,7 @@ Client (Hermes / OpenCode / curl)
 │  │ SQLite (data/router.db)          │    │
 │  │  accounts / usage / keys /       │    │
 │  │  proxies / farm_runs / config    │    │
+│  │  settings / request_logs         │    │
 │  └──────────────────────────────────┘    │
 └──────────────┬───────────────────────────┘
                │ per-account key + proxy (round-robin)
@@ -186,7 +191,8 @@ curl http://127.0.0.1:7622/v1/chat/completions \
 |---|---|
 | IMAP User | Gmail address for OTP reading |
 | IMAP Password | Gmail App Password (not login password) |
-| Email Domain | Catch-all domain forwarding to Gmail |
+| Gmail Dot Trick | Toggle: use dot trick instead of catch-all domain |
+| Email Domain | Catch-all domain forwarding to Gmail (hidden when dot trick enabled) |
 | Max Attempts | Max successful registrations per farm run |
 | Use Proxy Pool | Toggle: route farm traffic through proxy pool |
 
@@ -224,7 +230,7 @@ sudo systemctl enable --now alibaba-router
 | GET | `/v1/models` | List available models (requires router key) |
 | POST | `/v1/chat/completions` | Chat completion (streaming + non-streaming) |
 
-### Admin API (no auth)
+### Admin API (requires session auth via cookie)
 | Method | Path | Description |
 |---|---|---|
 | GET | `/admin/api/stats` | Summary statistics |
@@ -234,6 +240,9 @@ sudo systemctl enable --now alibaba-router
 | POST | `/admin/api/accounts/revive` | Revive dead account |
 | POST | `/admin/api/import` | Re-import from results.json |
 | GET | `/admin/api/usage` | Usage tracking per (account, model) |
+| GET | `/admin/api/request-logs` | Individual request logs (newest first) |
+| GET | `/admin/api/usage-over-time?hours=24` | Usage aggregated by model over time |
+| GET | `/admin/api/top-models?limit=10` | Top models by request count |
 | POST | `/admin/api/reset-slot` | Reset exhausted slot |
 | POST | `/admin/api/reset-account` | Reset all slots for account |
 | GET | `/admin/api/models` | Model catalog |
@@ -245,6 +254,11 @@ sudo systemctl enable --now alibaba-router
 | GET | `/admin/api/farm/status` | Farm run status |
 | GET | `/admin/api/farm/runs` | Farm run history |
 | GET | `/admin/api/farm/log` | Farm log tail |
+| GET/POST | `/admin/api/settings` | App settings (proxy, routing method) |
+| POST | `/admin/api/change-password` | Change login password |
+| POST | `/admin/api/login` | Login (no auth required) |
+| POST | `/admin/api/logout` | Logout |
+| GET | `/admin/api/auth-check` | Check session status (no auth required) |
 | GET | `/healthz` | Health check (no auth) |
 
 ## Available Models (35 text models)
@@ -281,32 +295,35 @@ Full list at `/admin/api/models` or in `store/models.json`.
 
 ```
 alibaba-router/
-├── main.go              # Entry point, HTTP server, routing
-├── admin.go             # Admin API handlers (keys, accounts, usage, stats)
-├── admin_extra.go       # Admin API handlers (dead accounts, models, proxies)
+├── main.go              # Entry point, HTTP server, route registration
+├── admin.go             # Admin API handlers (keys, accounts, usage, stats, settings)
+├── admin_auth.go        # Authentication (login/logout/session/middleware)
 ├── farm.go              # Farm runner subprocess + config + auto-import
 ├── go.mod
 ├── router/
-│   ├── router.go        # Round-robin + retry logic
+│   ├── router.go        # Round-robin/sticky routing + retry + request logging
 │   ├── upstream.go      # DashScope client, streaming/non-streaming
-│   ├── handler.go       # HTTP handlers for /v1/*
+│   ├── handler.go       # HTTP handlers for /v1/*, stream buffering
 │   ├── proxy.go         # Proxy pool manager
 │   ├── helpers.go       # Token extraction, proxy URL parsing
 │   └── errors.go        # Error definitions
 ├── store/
-│   ├── store.go         # SQLite layer, schema init, migration
-│   ├── usage.go         # Usage tracking ops
+│   ├── store.go         # SQLite layer, schema init, migration, structs
+│   ├── usage.go         # Usage tracking, request logs, farm runs, router keys
+│   ├── settings.go      # App settings (password, proxy, routing method)
 │   ├── dead_proxies.go  # Dead account + proxy pool ops
 │   ├── farm_config.go   # Farm config key-value store
 │   ├── schema.sql       # Database schema
 │   └── models.json      # Model allowlist (nalibaba-* → upstream)
 ├── web/
-│   ├── dashboard.html   # Stats + router keys + quick health
-│   ├── usage.html       # Token usage tracking
+│   ├── dashboard.html   # Stats + usage charts + base URL + router keys + quick health
+│   ├── usage.html       # Individual request logs with expandable details
 │   ├── accounts.html    # Account management + import
 │   ├── models.html      # Model catalog + copy
 │   ├── proxies.html     # Proxy pool management
-│   └── farm.html        # Farm control + config + setup guide
+│   ├── farm.html        # Farm control + config + dot trick + setup guide
+│   ├── settings.html    # Proxy toggle, routing method, change password
+│   └── login.html       # Session-based login with default password hint
 ├── cmd/
 │   └── importer/
 │       └── main.go      # CLI tool to import results.json

@@ -84,7 +84,7 @@ type RouteResult struct {
 	StreamResp   *http.Response
 	ProxyURL     string
 	Err          error
-	RequestBody  []byte
+	LogID        int64
 }
 
 // RouteChat routes a chat completion request with retry logic.
@@ -129,15 +129,15 @@ func (r *Router) RouteChat(routerKey, model string, body []byte, isStream bool) 
 		if isStream {
 			resp, _, ue := r.upstream.ForwardStream(acc.APIKey, upstreamModel, proxyURL, body)
 			if resp != nil {
-				// success — log request (empty response body for streams)
-				durationMs := int(time.Since(start).Milliseconds())
-				r.store.InsertRequestLog(acc.ID, acc.Email, upstreamModel, string(body), "", proxyURL, "", durationMs)
+				// success — insert log placeholder (response will be filled after stream completes)
+				logID, _ := r.store.InsertRequestLog(acc.ID, acc.Email, upstreamModel, string(body), "", proxyURL, "", 0)
 				// success — return stream to caller (caller closes body)
 				return &RouteResult{
 					AccountID:  accID,
 					StatusCode: resp.StatusCode,
 					StreamResp: resp,
 					ProxyURL:   proxyURL,
+					LogID:      logID,
 				}, nil
 			}
 			// error path
@@ -164,7 +164,7 @@ func (r *Router) RouteChat(routerKey, model string, body []byte, isStream bool) 
 			if tokens > 0 {
 				r.store.RecordUsage(accID, upstreamModel, tokens, proxyURL)
 			}
-			// log request
+			// log request with response body
 			durationMs := int(time.Since(start).Milliseconds())
 			r.store.InsertRequestLog(acc.ID, acc.Email, upstreamModel, string(body), string(respBody), proxyURL, "", durationMs)
 			return &RouteResult{
