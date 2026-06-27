@@ -347,6 +347,10 @@ providers:
 }
 ```
 
+## Shoutouts
+
+- [**alibaba-cloud-farm**](https://github.com/Micolaabdi/alibaba-cloud-farm) by [@Micolaabdi](https://github.com/Micolaabdi) — Bulk-register Alibaba Cloud accounts and harvest Model Studio API keys (1M free tokens each) using Camoufox + IMAP OTP automation. The perfect companion for feeding accounts into Nalibaba Router.
+
 ## License
 
 MIT
