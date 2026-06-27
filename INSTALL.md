@@ -145,30 +145,28 @@ Verify: pip list | grep -E "camoufox|playwright"
 Verify: camoufox --version
 
 ### 4. Configure farm credentials
-  cp .env.example .env
-Edit `.env` with your credentials:
-  nano .env
+Open the web UI at `/farm.html` and configure:
 
 Required:
-- **IMAP_USER**: Your Gmail address (for OTP retrieval)
-- **IMAP_PASS**: Gmail App Password (16-char, spaces ok)
+- **IMAP User**: Your Gmail address (for OTP retrieval)
+- **IMAP Password**: Gmail App Password (16-char, spaces ok)
   - Go to: Google Account → Security → 2-Step Verification → App passwords
-- **EMAIL_DOMAIN**: Your email domain (e.g., gmail.com)
+- **Email Domain**: Your email domain (e.g., gmail.com for dot trick, or yourdomain.com for catch-all)
 
 Optional:
-- **FARM_PROXY**: HTTP proxy for registration (format: http://user:pass@host:port)
-- **MAX_CONCURRENT**: Number of parallel registrations (default: 1)
+- **Max Attempts**: Number of registration attempts per run (default: 10)
+- **Route farm via proxy pool**: Toggle to use proxy pool for registrations
 
 ### 5. Gmail Dot Trick (optional)
 Enable in web UI at `/farm.html`:
-- **Gmail Dot Trick**: Insert random dots in Gmail username (e.g., `g.a.r.n.a.s.u.n.5.1.4@gmail.com`)
+- **Use Gmail dot trick**: Insert random dots in Gmail username (e.g., `g.a.r.n.a.s.u.n.5.1.4@gmail.com`)
 - Gmail ignores dots, so all variations deliver to the same inbox
 - Useful for generating multiple "unique" emails from one Gmail account
-- Disable "Email Domain" field when using dot trick
+- When enabled, Email Domain field is hidden (uses Gmail domain automatically)
 
 ### 6. Start the farm
 Via web UI at `/farm.html`:
-1. Configure IMAP credentials
+1. Configure IMAP credentials (step 4)
 2. Set max attempts (default: 10)
 3. Toggle "Use Proxy Pool" if needed
 4. Click "Start Farm"
