@@ -88,7 +88,15 @@ Client (Hermes / OpenCode / curl)
    https://dashscope-intl.aliyuncs.com/compatible-mode/v1
 ```
 
-## Quick Start
+## AI Agent Installation (one-paste setup)
+
+Paste this prompt into any AI coding agent (Code Assistant, Codex, Cursor, etc.) — it will clone, build, configure, and launch the router automatically on a Linux VPS:
+
+> **See [`INSTALL.md`](./INSTALL.md)** for the full copy-paste prompt.
+
+The prompt covers: Go install, clone, build, account import, systemd service setup, key generation, and verification — all automated with per-step checks.
+
+## Quick Start (manual)
 
 ### Prerequisites
 - Go 1.22+
