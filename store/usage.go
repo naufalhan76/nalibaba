@@ -33,16 +33,17 @@ func (s *Store) GetEligibleAccounts(model string) ([]int64, error) {
 	return out, nil
 }
 
-func (s *Store) RecordUsage(accountID int64, model string, tokens int64) error {
+func (s *Store) RecordUsage(accountID int64, model string, tokens int64, proxyURL string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	_, err := s.db.Exec(`
-		INSERT INTO usage(account_id, model, tokens_used, last_used_at)
-		VALUES(?,?,?,datetime('now'))
+		INSERT INTO usage(account_id, model, tokens_used, last_used_at, last_proxy)
+		VALUES(?,?,?,datetime('now'),?)
 		ON CONFLICT(account_id, model) DO UPDATE SET
 			tokens_used = tokens_used + excluded.tokens_used,
-			last_used_at = datetime('now')`,
-		accountID, model, tokens)
+			last_used_at = datetime('now'),
+			last_proxy = excluded.last_proxy`,
+		accountID, model, tokens, proxyURL)
 	return err
 }
 
@@ -78,7 +79,8 @@ func (s *Store) ListUsage() ([]Usage, error) {
 	rows, err := s.db.Query(`
 		SELECT account_id, model, tokens_used, exhausted,
 		       COALESCE(exhausted_at,''), COALESCE(last_429_at,''),
-		       COALESCE(last_used_at,''), COALESCE(last_error,'')
+		       COALESCE(last_used_at,''), COALESCE(last_error,''),
+		       COALESCE(last_proxy,'')
 		FROM usage ORDER BY model, account_id`)
 	if err != nil {
 		return nil, err
@@ -89,7 +91,7 @@ func (s *Store) ListUsage() ([]Usage, error) {
 		var u Usage
 		var ex int
 		if err := rows.Scan(&u.AccountID, &u.Model, &u.TokensUsed, &ex,
-			&u.ExhaustedAt, &u.Last429At, &u.LastUsedAt, &u.LastError); err != nil {
+			&u.ExhaustedAt, &u.Last429At, &u.LastUsedAt, &u.LastError, &u.LastProxy); err != nil {
 			return nil, err
 		}
 		u.Exhausted = ex == 1
@@ -236,4 +238,114 @@ func (s *Store) ListModels() []ModelDef {
 		out = append(out, m)
 	}
 	return out
+}
+
+
+// InsertRequestLog adds a new request log entry
+func (s *Store) InsertRequestLog(accountID int64, accountEmail, model, requestBody, responseBody, proxyURL, errorMessage string, durationMs int) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	
+	// Truncate to prevent DB bloat
+	if len(requestBody) > 2000 {
+		requestBody = requestBody[:2000] + "...(truncated)"
+	}
+	if len(responseBody) > 2000 {
+		responseBody = responseBody[:2000] + "...(truncated)"
+	}
+	
+	_, err := s.db.Exec(`
+		INSERT INTO request_logs (account_id, account_email, model, request_body, response_body, proxy_url, error_message, duration_ms)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, accountID, accountEmail, model, requestBody, responseBody, proxyURL, errorMessage, durationMs)
+	return err
+}
+
+// ListRequestLogs returns recent request logs (newest first)
+func (s *Store) ListRequestLogs(limit int) ([]RequestLog, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	
+	rows, err := s.db.Query(`
+		SELECT id, account_id, account_email, model, request_body, response_body, proxy_url, duration_ms, error_message, created_at
+		FROM request_logs
+		ORDER BY created_at DESC
+		LIMIT ?`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	
+	var logs []RequestLog
+	for rows.Next() {
+		var log RequestLog
+		if err := rows.Scan(&log.ID, &log.AccountID, &log.AccountEmail, &log.Model, &log.RequestBody, 
+			&log.ResponseBody, &log.ProxyURL, &log.DurationMs, &log.ErrorMessage, &log.CreatedAt); err != nil {
+			return nil, err
+		}
+		logs = append(logs, log)
+	}
+	return logs, nil
+}
+
+
+// GetUsageOverTime returns usage aggregated by model over time periods
+func (s *Store) GetUsageOverTime(hours int) ([]UsageTimePoint, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	
+	rows, err := s.db.Query(`
+		SELECT 
+			strftime('%Y-%m-%d %H:00', created_at) as time_period,
+			model,
+			SUM(duration_ms) as total_duration,
+			COUNT(*) as request_count
+		FROM request_logs
+		WHERE created_at >= datetime('now', '-' || ? || ' hours')
+		GROUP BY time_period, model
+		ORDER BY time_period, model`, hours)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	
+	var points []UsageTimePoint
+	for rows.Next() {
+		var p UsageTimePoint
+		if err := rows.Scan(&p.TimePeriod, &p.Model, &p.TotalDurationMs, &p.RequestCount); err != nil {
+			return nil, err
+		}
+		points = append(points, p)
+	}
+	return points, nil
+}
+
+// GetTopModels returns top N models by total requests
+func (s *Store) GetTopModels(limit int) ([]ModelUsage, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	
+	rows, err := s.db.Query(`
+		SELECT 
+			model,
+			COUNT(*) as total_requests,
+			AVG(duration_ms) as avg_duration_ms
+		FROM request_logs
+		WHERE created_at >= datetime('now', '-24 hours')
+		GROUP BY model
+		ORDER BY total_requests DESC
+		LIMIT ?`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	
+	var models []ModelUsage
+	for rows.Next() {
+		var m ModelUsage
+		if err := rows.Scan(&m.Model, &m.TotalRequests, &m.AvgDurationMs); err != nil {
+			return nil, err
+		}
+		models = append(models, m)
+	}
+	return models, nil
 }

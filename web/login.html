@@ -121,6 +121,24 @@
   .error-msg.show {
     display: block;
   }
+  .hint-box {
+    margin-top: 16px;
+    padding: 12px;
+    background: rgba(0, 212, 255, 0.05);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+  .hint-box code {
+    background: var(--bg);
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: var(--mono);
+    color: var(--accent);
+    font-size: 11px;
+  }
   .loading {
     display: inline-block; width: 12px; height: 12px;
     border: 2px solid var(--border); border-top-color: var(--accent);
@@ -149,6 +167,10 @@
       </button>
       <div class="error-msg" id="error-msg"></div>
     </form>
+    <div class="hint-box">
+      <strong>Default password:</strong> <code>123456</code><br>
+      For security, please change it in <strong>Settings</strong> after your first login.
+    </div>
   </div>
 </div>
 

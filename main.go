@@ -77,6 +77,9 @@ func main() {
 	mux.HandleFunc("/admin/api/farm/runs", AuthMiddleware(ah.FarmRuns))
 	mux.HandleFunc("/admin/api/farm/log", AuthMiddleware(ah.FarmLog))
 	mux.HandleFunc("/admin/api/farm/config", AuthMiddleware(ah.FarmConfig))
+	mux.HandleFunc("/admin/api/usage-over-time", AuthMiddleware(ah.UsageOverTime))
+	mux.HandleFunc("/admin/api/top-models", AuthMiddleware(ah.TopModels))
+	mux.HandleFunc("/admin/api/request-logs", AuthMiddleware(ah.RequestLogs))
 	mux.HandleFunc("/admin/api/settings", AuthMiddleware(func(w http.ResponseWriter, req *http.Request) {
 		if req.Method == "GET" {
 			ah.GetSettings(w, req)

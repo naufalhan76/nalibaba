@@ -105,7 +105,9 @@
     vertical-align: middle;
   }
   tbody tr:last-child td { border-bottom: none; }
-  tbody tr:hover { background: rgba(255,255,255,0.02); }
+  tbody tr.log-row { cursor: pointer; transition: background 0.1s; }
+  tbody tr.log-row:hover { background: rgba(255,255,255,0.03); }
+  tbody tr.log-row.expanded { background: rgba(0,212,255,0.03); }
   .td-mono { font-family: var(--mono); font-size: 12px; }
   .td-dim { color: var(--text-dim); }
   .td-muted { color: var(--text-muted); font-size: 12px; }
@@ -137,8 +139,8 @@
     font-size: 11px; font-weight: 600;
     text-transform: uppercase; letter-spacing: 0.03em;
   }
-  .badge-active { background: var(--success-bg); color: var(--success); }
-  .badge-exhausted { background: var(--danger-bg); color: var(--danger); }
+  .badge-success { background: var(--success-bg); color: var(--success); }
+  .badge-error { background: var(--danger-bg); color: var(--danger); }
   .badge-dot {
     width: 6px; height: 6px; border-radius: 50%;
     background: currentColor;
@@ -154,6 +156,64 @@
     padding: 5px 10px; border-radius: 6px; cursor: pointer;
   }
   .filter-select:focus { outline: none; border-color: var(--accent-dim); }
+
+  /* Detail panel */
+  .detail-row td {
+    padding: 0 !important;
+    border-bottom: 1px solid var(--border) !important;
+  }
+  .detail-panel {
+    background: rgba(0,0,0,0.3);
+    padding: 16px 20px;
+    border-top: 1px solid var(--border);
+  }
+  .detail-section {
+    margin-bottom: 12px;
+  }
+  .detail-section:last-child { margin-bottom: 0; }
+  .detail-label {
+    font-size: 11px; text-transform: uppercase;
+    letter-spacing: 0.04em; color: var(--text-muted);
+    margin-bottom: 6px; font-weight: 600;
+  }
+  .detail-pre {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px;
+    max-height: 300px;
+    overflow: auto;
+    font-family: var(--mono);
+    font-size: 11px;
+    line-height: 1.4;
+    color: var(--text-dim);
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+  .detail-error {
+    background: var(--danger-bg);
+    border: 1px solid rgba(255,71,87,0.3);
+    border-radius: 6px;
+    padding: 10px 12px;
+    color: var(--danger);
+    font-size: 12px;
+    font-family: var(--mono);
+  }
+
+  /* Auto-refresh indicator */
+  .refresh-indicator {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11px; color: var(--text-muted);
+  }
+  .refresh-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--success);
+    animation: pulse 2s ease infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
 
   /* Empty */
   .empty {
@@ -193,19 +253,10 @@
   /* Table wrap (responsive horizontal scroll) */
   .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .table-wrap table { min-width: 400px; }
-  .row-actions { display: flex; gap: 4px; justify-content: flex-end; }
 
-  /* Model group row */
-  .model-group-row td {
-    background: rgba(0,212,255,0.03) !important;
-    padding: 6px 14px !important;
-    font-size: 11px !important;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--accent) !important;
-    font-weight: 600;
-    border-bottom: 1px solid var(--border) !important;
-  }
+  /* Proxy text */
+  .proxy-dim { color: var(--text-muted); font-style: italic; font-size: 12px; }
+  .proxy-text { font-family: var(--mono); font-size: 11px; color: var(--text-dim); }
 
   /* Responsive */
   @media (max-width: 900px) {
@@ -217,8 +268,6 @@
     .nav-brand span { display: none; }
     .hide-mobile { display: none; }
     .table-wrap table { min-width: auto; }
-    .row-actions { flex-direction: column; gap: 2px; }
-    .btn-sm { padding: 3px 6px; font-size: 10px; }
   }
 
   /* Hamburger toggle - hidden on desktop */
@@ -299,27 +348,31 @@
 
 <div class="container">
 
-  <!-- Usage -->
+  <!-- Request Logs -->
   <div class="section">
     <div class="section-header">
       <div class="section-title">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-        Usage Tracking
+        Request Logs
       </div>
       <div class="section-actions">
         <div class="filter-group">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--text-muted)"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
-          <select class="filter-select" id="model-filter" onchange="renderUsage()">
+          <select class="filter-select" id="model-filter" onchange="renderLogs()">
             <option value="">All Models</option>
           </select>
         </div>
         <div class="filter-group">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--text-muted)"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
-          <select class="filter-select" id="status-filter" onchange="renderUsage()">
+          <select class="filter-select" id="status-filter" onchange="renderLogs()">
             <option value="">All Status</option>
-            <option value="exhausted">Exhausted</option>
-            <option value="active">Active</option>
+            <option value="success">Success</option>
+            <option value="error">Error</option>
           </select>
+        </div>
+        <div class="refresh-indicator">
+          <span class="refresh-dot"></span>
+          Auto-refresh 5s
         </div>
       </div>
     </div>
@@ -329,11 +382,18 @@
           <table>
             <thead>
               <tr>
-                <th>Model</th><th>Account ID</th><th>Tokens Used</th><th>Status</th><th class="hide-mobile">Last Used</th><th class="hide-mobile">Last Error</th><th style="text-align:right">Actions</th>
+                <th>#</th>
+                <th>Account</th>
+                <th class="hide-mobile">Email</th>
+                <th>Model</th>
+                <th class="hide-mobile">Proxy</th>
+                <th>Duration</th>
+                <th>Status</th>
+                <th class="hide-mobile">Time</th>
               </tr>
             </thead>
-            <tbody id="usage-tbody">
-              <tr><td colspan="7"><div class="empty">Loading...</div></td></tr>
+            <tbody id="logs-tbody">
+              <tr><td colspan="8"><div class="empty">Loading...</div></td></tr>
             </tbody>
           </table>
         </div>
@@ -347,8 +407,8 @@
 
 <script>
 const API = '';
-let allUsage = [];
-let allModels = [];
+let allLogs = [];
+let expandedRows = new Set();
 
 // --- Nav toggle (mobile) ---
 function toggleNav() {
@@ -365,11 +425,15 @@ document.querySelectorAll('.nav-link').forEach(l => l.addEventListener('click', 
 async function checkAuth() {
   try {
     const r = await fetch(API + '/admin/api/auth-check');
-    if (!r.ok) {
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok || !data.authenticated) {
       window.location.href = '/login.html';
+      return false;
     }
+    return true;
   } catch (e) {
     window.location.href = '/login.html';
+    return false;
   }
 }
 
@@ -383,24 +447,45 @@ function toast(msg, type = '') {
   setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 200); }, 3000);
 }
 
-function fmtNum(n) {
-  if (n === null || n === undefined) return '0';
-  if (n >= 1e9) return (n / 1e9).toFixed(2) + 'B';
-  if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
-  if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
-  return String(n);
+function fmtDuration(ms) {
+  if (ms === null || ms === undefined) return '—';
+  if (ms < 1000) return ms + 'ms';
+  return (ms / 1000).toFixed(1) + 's';
 }
 
 function fmtDate(d) {
   if (!d) return '—';
   const date = new Date(d);
   if (isNaN(date)) return d;
-  return date.toLocaleString('en-US', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+  return date.toLocaleString('en-US', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit', second:'2-digit' });
 }
 
 function escapeHtml(s) {
   if (s === null || s === undefined) return '';
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function stripProxyAuth(url) {
+  if (!url) return '';
+  try {
+    const u = new URL(url);
+    // Remove username/password
+    u.username = '';
+    u.password = '';
+    return u.host + (u.pathname && u.pathname !== '/' ? u.pathname : '');
+  } catch (e) {
+    return url;
+  }
+}
+
+function prettyJson(text) {
+  if (!text) return '';
+  try {
+    const parsed = typeof text === 'string' ? JSON.parse(text) : text;
+    return JSON.stringify(parsed, null, 2);
+  } catch (e) {
+    return String(text);
+  }
 }
 
 async function api(path, opts = {}) {
@@ -419,115 +504,112 @@ async function api(path, opts = {}) {
   }
 }
 
-// --- Load models for filter ---
-async function loadModels() {
+// --- Populate model filter from log data ---
+function populateModelFilter() {
+  const sel = document.getElementById('model-filter');
+  const current = sel.value;
+  const models = [...new Set(allLogs.map(l => l.model).filter(Boolean))].sort();
+  sel.innerHTML = '<option value="">All Models</option>' +
+    models.map(m => `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join('');
+  sel.value = current;
+}
+
+// --- Load request logs ---
+async function loadLogs() {
   try {
-    const models = await api('/admin/api/models');
-    allModels = models || [];
-    const sel = document.getElementById('model-filter');
-    const current = sel.value;
-    sel.innerHTML = '<option value="">All Models</option>' +
-      allModels.map(m => `<option value="${escapeHtml(m.id)}">${escapeHtml(m.id)}</option>`).join('');
-    sel.value = current;
+    const logs = await api('/admin/api/request-logs?limit=200');
+    allLogs = logs || [];
+    populateModelFilter();
+    renderLogs();
   } catch (e) {}
 }
 
-// --- Load usage ---
-async function loadUsage() {
-  try {
-    const usage = await api('/admin/api/usage');
-    allUsage = usage || [];
-    // Also populate model filter from usage data if models endpoint failed
-    const sel = document.getElementById('model-filter');
-    if (allModels.length === 0) {
-      const models = [...new Set(allUsage.map(u => u.model))].sort();
-      const current = sel.value;
-      sel.innerHTML = '<option value="">All Models</option>' +
-        models.map(m => `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join('');
-      sel.value = current;
-    }
-    renderUsage();
-  } catch (e) {}
+function toggleRow(id) {
+  if (expandedRows.has(id)) {
+    expandedRows.delete(id);
+  } else {
+    expandedRows.add(id);
+  }
+  renderLogs();
 }
 
-function renderUsage() {
-  const tb = document.getElementById('usage-tbody');
+function renderLogs() {
+  const tb = document.getElementById('logs-tbody');
   const modelFilter = document.getElementById('model-filter').value;
   const statusFilter = document.getElementById('status-filter').value;
 
-  let data = allUsage;
-  if (modelFilter) data = data.filter(u => u.model === modelFilter);
-  if (statusFilter === 'exhausted') data = data.filter(u => u.exhausted);
-  if (statusFilter === 'active') data = data.filter(u => !u.exhausted);
-
-  // sort: exhausted first, then by tokens desc
-  data.sort((a, b) => {
-    if (a.exhausted !== b.exhausted) return a.exhausted ? -1 : 1;
-    return (b.tokens_used || 0) - (a.tokens_used || 0);
-  });
+  let data = allLogs;
+  if (modelFilter) data = data.filter(l => l.model === modelFilter);
+  if (statusFilter === 'success') data = data.filter(l => !l.error_message);
+  if (statusFilter === 'error') data = data.filter(l => !!l.error_message);
 
   if (!data || data.length === 0) {
-    tb.innerHTML = '<tr><td colspan="7"><div class="empty">No usage data</div></td></tr>';
+    tb.innerHTML = '<tr><td colspan="8"><div class="empty">No requests logged yet</div></td></tr>';
     return;
   }
 
-  // group by model for visual separation
   let html = '';
-  let lastModel = null;
-  data.forEach(u => {
-    if (u.model !== lastModel) {
-      lastModel = u.model;
-      html += `<tr class="model-group-row"><td colspan="7">${escapeHtml(u.model || 'unknown')}</td></tr>`;
-    }
-    const exhausted = u.exhausted;
-    html += `<tr>
-      <td class="td-muted">${escapeHtml(u.model || '—')}</td>
-      <td class="td-mono">${escapeHtml(String(u.account_id ?? '—'))}</td>
-      <td class="td-mono">${fmtNum(u.tokens_used || 0)}</td>
-      <td>${exhausted
-        ? '<span class="badge badge-exhausted"><span class="badge-dot"></span>Exhausted</span>'
-        : '<span class="badge badge-active"><span class="badge-dot"></span>Active</span>'}
-      </td>
-      <td class="td-muted hide-mobile">${fmtDate(u.last_used_at)}</td>
-      <td class="td-err hide-mobile" title="${escapeHtml(u.last_error || '')}">${escapeHtml(u.last_error || '—')}</td>
-      <td style="text-align:right;white-space:nowrap;">
-        <div class="row-actions">
-        ${exhausted
-          ? `<button class="btn btn-sm" onclick="resetSlot('${escapeHtml(String(u.account_id))}','${escapeHtml(u.model)}')">Reset Slot</button>`
-          : ''}
-        <button class="btn btn-sm" onclick="resetAccount('${escapeHtml(String(u.account_id))}')">Reset All</button>
-        </div>
-      </td>
+  data.forEach(log => {
+    const hasError = !!log.error_message;
+    const isExpanded = expandedRows.has(log.id);
+    const proxyDisplay = log.proxy_url ? stripProxyAuth(log.proxy_url) : '';
+    const emailTruncated = (log.account_email || '').length > 20 
+      ? log.account_email.slice(0, 20) + '...' 
+      : (log.account_email || '—');
+
+    html += `<tr class="log-row ${isExpanded ? 'expanded' : ''}" onclick="toggleRow(${log.id})">
+      <td class="td-mono td-muted">${log.id}</td>
+      <td class="td-mono">${escapeHtml(String(log.account_id ?? '—'))}</td>
+      <td class="td-dim hide-mobile" title="${escapeHtml(log.account_email || '')}">${escapeHtml(emailTruncated)}</td>
+      <td class="td-muted">${escapeHtml(log.model || '—')}</td>
+      <td class="hide-mobile">${proxyDisplay 
+        ? `<span class="proxy-text">${escapeHtml(proxyDisplay)}</span>`
+        : '<span class="proxy-dim">No Proxy Used</span>'}</td>
+      <td class="td-mono">${fmtDuration(log.duration_ms)}</td>
+      <td>${hasError
+        ? '<span class="badge badge-error"><span class="badge-dot"></span>Error</span>'
+        : '<span class="badge badge-success"><span class="badge-dot"></span>OK</span>'}</td>
+      <td class="td-muted hide-mobile">${fmtDate(log.created_at)}</td>
     </tr>`;
+
+    // Detail row (expanded)
+    if (isExpanded) {
+      html += `<tr class="detail-row"><td colspan="8">
+        <div class="detail-panel">`;
+      
+      if (hasError) {
+        html += `<div class="detail-section">
+          <div class="detail-label">Error Message</div>
+          <div class="detail-error">${escapeHtml(log.error_message)}</div>
+        </div>`;
+      }
+
+      html += `<div class="detail-section">
+        <div class="detail-label">Request Body</div>
+        <pre class="detail-pre">${escapeHtml(prettyJson(log.request_body))}</pre>
+      </div>`;
+
+      html += `<div class="detail-section">
+        <div class="detail-label">Response Body</div>
+        <pre class="detail-pre">${escapeHtml(prettyJson(log.response_body))}</pre>
+      </div>`;
+
+      html += `</div>
+      </td></tr>`;
+    }
   });
+
   tb.innerHTML = html;
-}
-
-async function resetSlot(accountId, model) {
-  try {
-    await api('/admin/api/reset-slot', { method: 'POST', body: JSON.stringify({ account_id: parseInt(accountId), model }) });
-    toast('Slot reset', 'success');
-    loadUsage();
-  } catch (e) {}
-}
-
-async function resetAccount(accountId) {
-  if (!confirm('Reset ALL slots for this account?')) return;
-  try {
-    await api('/admin/api/reset-account', { method: 'POST', body: JSON.stringify({ account_id: parseInt(accountId) }) });
-    toast('Account slots reset', 'success');
-    loadUsage();
-  } catch (e) {}
 }
 
 // --- Init ---
 checkAuth();
 async function init() {
-  await Promise.all([loadModels(), loadUsage()]);
+  await loadLogs();
 }
 
 init();
-setInterval(loadUsage, 10000);
+setInterval(loadLogs, 5000);
 </script>
 </body>
 </html>

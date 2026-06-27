@@ -121,15 +121,12 @@ func (a *AdminHandler) FarmStart(w http.ResponseWriter, r *http.Request) {
 	env = append(env, "MAX_ATTEMPTS="+strconv.Itoa(maxAttempts))
 	env = append(env, "PYTHONUNBUFFERED=1") // ensure real-time log output
 	
-	// Load settings and pass DOT_TRICK_ENABLED to farm.py
-	settings, err := a.store.GetSettings()
-	if err == nil {
-		dotTrickVal := "0"
-		if settings.DotTrickEnabled {
-			dotTrickVal = "1"
-		}
-		env = append(env, "DOT_TRICK_ENABLED="+dotTrickVal)
+	// Pass DOT_TRICK_ENABLED to farm.py from farm config
+	dotTrickVal := "0"
+	if cfg["DOT_TRICK_ENABLED"] == "1" || cfg["DOT_TRICK_ENABLED"] == "true" {
+		dotTrickVal = "1"
 	}
+	env = append(env, "DOT_TRICK_ENABLED="+dotTrickVal)
 	
 	cmd.Env = env
 	cmd.Stdout = logFile

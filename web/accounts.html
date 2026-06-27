@@ -376,11 +376,15 @@ document.querySelectorAll('.nav-link').forEach(l => l.addEventListener('click', 
 async function checkAuth() {
   try {
     const r = await fetch(API + '/admin/api/auth-check');
-    if (!r.ok) {
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok || !data.authenticated) {
       window.location.href = '/login.html';
+      return false;
     }
+    return true;
   } catch (e) {
     window.location.href = '/login.html';
+    return false;
   }
 }
 

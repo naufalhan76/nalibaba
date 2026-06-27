@@ -72,3 +72,22 @@ CREATE TABLE IF NOT EXISTS settings (
 
 CREATE INDEX IF NOT EXISTS idx_usage_model ON usage(model, exhausted);
 CREATE INDEX IF NOT EXISTS idx_usage_account ON usage(account_id);
+
+
+-- Request logs table for individual API requests
+CREATE TABLE IF NOT EXISTS request_logs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  account_id INTEGER NOT NULL,
+  model TEXT NOT NULL,
+  request_body TEXT,
+  response_body TEXT,
+  proxy_url TEXT,
+  status_code INTEGER,
+  tokens_used INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now')),
+  FOREIGN KEY (account_id) REFERENCES accounts(id)
+);
+
+-- Index for fast queries
+CREATE INDEX IF NOT EXISTS idx_request_logs_created ON request_logs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_request_logs_account ON request_logs(account_id, model);

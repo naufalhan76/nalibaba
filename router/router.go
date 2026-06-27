@@ -3,6 +3,7 @@ package router
 import (
 	"net/http"
 	"sync"
+	"time"
 
 	"alibaba-router/store"
 )
@@ -77,11 +78,13 @@ func (r *Router) advancePointer(model string) {
 
 // RouteResult holds the outcome of a routing attempt.
 type RouteResult struct {
-	AccountID  int64
-	StatusCode int
-	Body       []byte
-	StreamResp *http.Response
-	Err        error
+	AccountID    int64
+	StatusCode   int
+	Body         []byte
+	StreamResp   *http.Response
+	ProxyURL     string
+	Err          error
+	RequestBody  []byte
 }
 
 // RouteChat routes a chat completion request with retry logic.
@@ -89,6 +92,8 @@ type RouteResult struct {
 // onUsage is called with token count from response (for non-stream).
 // The caller is responsible for closing stream resp.Body if StreamResp != nil.
 func (r *Router) RouteChat(routerKey, model string, body []byte, isStream bool) (*RouteResult, error) {
+	start := time.Now()
+
 	// resolve model alias
 	mdef, ok := r.store.GetModel(model)
 	if !ok {
@@ -97,10 +102,15 @@ func (r *Router) RouteChat(routerKey, model string, body []byte, isStream bool) 
 	upstreamModel := mdef.Upstream
 
 	var lastErr error
+	var lastAccID int64
+	var lastAccEmail string
+	var lastProxyURL string
 	for attempt := 0; attempt < MaxRetries; attempt++ {
 		accID, err := r.PickAccount(upstreamModel)
 		if err != nil {
 			if lastErr != nil {
+				durationMs := int(time.Since(start).Milliseconds())
+				r.store.InsertRequestLog(lastAccID, lastAccEmail, upstreamModel, string(body), "", lastProxyURL, lastErr.Error(), durationMs)
 				return nil, lastErr
 			}
 			return nil, err
@@ -109,18 +119,25 @@ func (r *Router) RouteChat(routerKey, model string, body []byte, isStream bool) 
 		if err != nil {
 			continue
 		}
+		lastAccID = acc.ID
+		lastAccEmail = acc.Email
 
 		// pick proxy (round-robin, empty = direct)
 		proxyURL, _ := r.proxies.PickProxy()
+		lastProxyURL = proxyURL
 
 		if isStream {
 			resp, _, ue := r.upstream.ForwardStream(acc.APIKey, upstreamModel, proxyURL, body)
 			if resp != nil {
+				// success — log request (empty response body for streams)
+				durationMs := int(time.Since(start).Milliseconds())
+				r.store.InsertRequestLog(acc.ID, acc.Email, upstreamModel, string(body), "", proxyURL, "", durationMs)
 				// success — return stream to caller (caller closes body)
 				return &RouteResult{
 					AccountID:  accID,
 					StatusCode: resp.StatusCode,
 					StreamResp: resp,
+					ProxyURL:   proxyURL,
 				}, nil
 			}
 			// error path
@@ -145,12 +162,16 @@ func (r *Router) RouteChat(routerKey, model string, body []byte, isStream bool) 
 			// success — record usage
 			tokens := extractTokens(respBody)
 			if tokens > 0 {
-				r.store.RecordUsage(accID, upstreamModel, tokens)
+				r.store.RecordUsage(accID, upstreamModel, tokens, proxyURL)
 			}
+			// log request
+			durationMs := int(time.Since(start).Milliseconds())
+			r.store.InsertRequestLog(acc.ID, acc.Email, upstreamModel, string(body), string(respBody), proxyURL, "", durationMs)
 			return &RouteResult{
 				AccountID:  accID,
 				StatusCode: status,
 				Body:       respBody,
+				ProxyURL:   proxyURL,
 			}, nil
 		}
 		lastErr = ue
@@ -162,6 +183,13 @@ func (r *Router) RouteChat(routerKey, model string, body []byte, isStream bool) 
 		r.handleUpstreamError(accID, upstreamModel, ue, status)
 		r.advancePointer(upstreamModel)
 	}
+	// all retries exhausted — log the final error
+	durationMs := int(time.Since(start).Milliseconds())
+	errMsg := "all retries exhausted"
+	if lastErr != nil {
+		errMsg = lastErr.Error()
+	}
+	r.store.InsertRequestLog(lastAccID, lastAccEmail, upstreamModel, string(body), "", lastProxyURL, errMsg, durationMs)
 	if lastErr != nil {
 		return nil, lastErr
 	}

@@ -416,6 +416,44 @@
     </div>
   </div>
 
+  <!-- Usage Statistics -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Usage Statistics (Last 24h)
+      </div>
+      <div class="section-actions">
+        <button class="btn btn-sm" onclick="loadUsageCharts()">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          Refresh
+        </button>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Usage Over Time
+        </div>
+        <div class="card-body" style="padding: 16px;">
+          <canvas id="usageChart" width="600" height="300" style="width: 100%; height: 300px;"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          Top Models
+        </div>
+        <div class="card-body">
+          <div id="topModelsList" class="empty">Loading...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  </div>
+
   <!-- Router Keys + Quick Health -->
   <div class="grid-2">
 
@@ -517,11 +555,15 @@ document.querySelectorAll('.nav-link').forEach(l => l.addEventListener('click', 
 async function checkAuth() {
   try {
     const r = await fetch(API + '/admin/api/auth-check');
-    if (!r.ok) {
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok || !data.authenticated) {
       window.location.href = '/login.html';
+      return false;
     }
+    return true;
   } catch (e) {
     window.location.href = '/login.html';
+    return false;
   }
 }
 
@@ -648,6 +690,7 @@ async function generateKey() {
     const r = await api('/admin/api/keys', { method: 'POST', body: JSON.stringify({ label: label || '' }) });
     toast('Key generated: ' + maskKey(r.key), 'success');
     loadKeys();
+  loadUsageCharts();
     loadStats();
   } catch (e) {
   } finally {
@@ -678,6 +721,7 @@ async function revokeKey(key) {
     await api('/admin/api/keys?key=' + encodeURIComponent(key), { method: 'DELETE' });
     toast('Key revoked', 'success');
     loadKeys();
+  loadUsageCharts();
     loadStats();
   } catch (e) {
     toast('Failed to revoke key', 'error');
@@ -745,11 +789,215 @@ async function loadHealth() {
 // --- Init ---
 checkAuth();
 async function init() {
-  await Promise.all([loadStats(), loadDeadCount(), loadKeys(), loadHealth(), loadBaseUrl()]);
+  await Promise.all([loadStats(), loadDeadCount(), loadKeys(), loadHealth(), loadBaseUrl(), loadUsageCharts()]);
 }
 
 init();
 setInterval(() => { loadStats(); loadDeadCount(); loadHealth(); }, 10000);
+
+
+// --- Usage Charts ---
+let usageChart = null;
+
+async function loadUsageCharts() {
+  try {
+    const [overTime, topModels] = await Promise.all([
+      api('/admin/api/usage-over-time?hours=24'),
+      api('/admin/api/top-models?limit=10')
+    ]);
+
+    // Render usage over time chart
+    renderUsageChart(overTime || []);
+    
+    // Render top models list
+    renderTopModels(topModels || []);
+  } catch (e) {
+    console.error('Failed to load usage charts:', e);
+  }
+}
+
+function renderUsageChart(data) {
+  const canvas = document.getElementById('usageChart');
+  if (!canvas) return;
+
+  // Set actual pixel dimensions based on CSS size
+  const rect = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = rect.width * dpr;
+  canvas.height = 300 * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const W = rect.width;
+  const H = 300;
+
+  // Clear canvas
+  ctx.clearRect(0, 0, W, H);
+
+  if (!data || data.length === 0) {
+    ctx.fillStyle = '#5a5a5a';
+    ctx.font = '13px -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('No usage data in the last 24 hours', W / 2, H / 2);
+    return;
+  }
+
+  // Group by model
+  const models = {};
+  const timePeriods = new Set();
+
+  data.forEach(point => {
+    if (!models[point.model]) {
+      models[point.model] = {};
+    }
+    models[point.model][point.time_period] = point.request_count;
+    timePeriods.add(point.time_period);
+  });
+
+  const sortedPeriods = Array.from(timePeriods).sort();
+  const modelNames = Object.keys(models);
+
+  // Colors for different models
+  const colors = [
+    'rgba(0, 212, 255, 1)',   // cyan
+    'rgba(46, 213, 115, 1)',  // green
+    'rgba(255, 165, 2, 1)',   // orange
+    'rgba(255, 71, 87, 1)',   // red
+    'rgba(155, 89, 182, 1)',  // purple
+    'rgba(46, 213, 200, 1)',  // teal
+  ];
+
+  // Chart dimensions
+  const padding = { top: 20, right: 20, bottom: 60, left: 50 };
+  const chartWidth = W - padding.left - padding.right;
+  const chartHeight = H - padding.top - padding.bottom;
+
+  // Find max value
+  let maxValue = 0;
+  modelNames.forEach(model => {
+    sortedPeriods.forEach(period => {
+      const value = models[model][period] || 0;
+      if (value > maxValue) maxValue = value;
+    });
+  });
+  if (maxValue === 0) maxValue = 1;
+
+  // Draw axes
+  ctx.strokeStyle = '#2a2a2a';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(padding.left, padding.top);
+  ctx.lineTo(padding.left, padding.top + chartHeight);
+  ctx.lineTo(padding.left + chartWidth, padding.top + chartHeight);
+  ctx.stroke();
+
+  // Draw grid lines
+  ctx.strokeStyle = 'rgba(42, 42, 42, 0.5)';
+  ctx.lineWidth = 0.5;
+  for (let i = 0; i <= 4; i++) {
+    const y = padding.top + (chartHeight / 4) * i;
+    ctx.beginPath();
+    ctx.moveTo(padding.left, y);
+    ctx.lineTo(padding.left + chartWidth, y);
+    ctx.stroke();
+
+    // Y-axis labels
+    const value = Math.round(maxValue - (maxValue / 4) * i);
+    ctx.fillStyle = '#5a5a5a';
+    ctx.font = '11px monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText(value.toString(), padding.left - 8, y + 4);
+  }
+
+  // Draw lines for each model
+  modelNames.forEach((model, modelIndex) => {
+    const color = colors[modelIndex % colors.length];
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+
+    let firstPoint = true;
+    sortedPeriods.forEach((period, periodIndex) => {
+      const x = padding.left + (chartWidth / Math.max(sortedPeriods.length - 1, 1)) * periodIndex;
+      const value = models[model][period] || 0;
+      const y = padding.top + chartHeight - (value / maxValue) * chartHeight;
+
+      if (firstPoint) {
+        ctx.moveTo(x, y);
+        firstPoint = false;
+      } else {
+        ctx.lineTo(x, y);
+      }
+    });
+
+    ctx.stroke();
+
+    // Draw dots at data points
+    ctx.fillStyle = color;
+    sortedPeriods.forEach((period, periodIndex) => {
+      const x = padding.left + (chartWidth / Math.max(sortedPeriods.length - 1, 1)) * periodIndex;
+      const value = models[model][period] || 0;
+      const y = padding.top + chartHeight - (value / maxValue) * chartHeight;
+      ctx.beginPath();
+      ctx.arc(x, y, 3, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    // Draw legend
+    const legendY = H - 40 + (modelIndex % 2) * 15;
+    const legendX = padding.left + (modelIndex % 3) * Math.floor(chartWidth / 3);
+
+    ctx.fillStyle = color;
+    ctx.fillRect(legendX, legendY, 12, 12);
+    ctx.fillStyle = '#e4e4e4';
+    ctx.font = '11px -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.textAlign = 'left';
+    const displayName = model.length > 20 ? model.slice(0, 18) + '..' : model;
+    ctx.fillText(displayName, legendX + 16, legendY + 10);
+  });
+
+  // X-axis labels (time periods)
+  ctx.fillStyle = '#5a5a5a';
+  ctx.font = '10px monospace';
+  ctx.textAlign = 'center';
+  const step = Math.max(1, Math.floor(sortedPeriods.length / 6));
+  sortedPeriods.forEach((period, index) => {
+    if (index % step === 0) {
+      const x = padding.left + (chartWidth / Math.max(sortedPeriods.length - 1, 1)) * index;
+      const time = period.split(' ')[1] || period; // Extract time part
+      ctx.fillText(time, x, H - 50);
+    }
+  });
+}
+
+function renderTopModels(data) {
+  const container = document.getElementById('topModelsList');
+
+  if (!data || data.length === 0) {
+    container.innerHTML = '<div class="empty">No usage data</div>';
+    return;
+  }
+
+  // Limit to top 5
+  const top5 = data.slice(0, 5);
+
+  const html = top5.map((model, idx) => `
+    <div class="status-row">
+      <span class="status-label" style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-family: var(--mono); color: var(--text-muted); font-size: 11px; min-width: 18px;">${idx + 1}.</span>
+        ${escapeHtml(model.model)}
+      </span>
+      <span class="status-value">
+        ${model.total_requests} req
+        <span class="td-muted" style="margin-left: 8px;">${Math.round(model.avg_duration_ms)}ms avg</span>
+      </span>
+    </div>
+  `).join('');
+
+  container.innerHTML = html;
+}
+
+
 </script>
 </body>
 </html>

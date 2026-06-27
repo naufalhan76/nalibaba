@@ -84,6 +84,22 @@ func (a *AdminHandler) Usage(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, usage)
 }
 
+// RequestLogs: GET recent request logs.
+func (a *AdminHandler) RequestLogs(w http.ResponseWriter, r *http.Request) {
+	limit := 100
+	if l := r.URL.Query().Get("limit"); l != "" {
+		if n, err := strconv.Atoi(l); err == nil && n > 0 {
+			limit = n
+		}
+	}
+	logs, err := a.store.ListRequestLogs(limit)
+	if err != nil {
+		writeErr(w, 500, err)
+		return
+	}
+	writeJSON(w, 200, logs)
+}
+
 // Import: POST re-sync from results.json.
 func (a *AdminHandler) Import(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
@@ -322,4 +338,45 @@ func (a *AdminHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, 200, map[string]string{"status": "changed"})
+}
+
+
+// UsageOverTime: GET - returns usage data over time for chart
+func (a *AdminHandler) UsageOverTime(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		w.WriteHeader(405)
+		return
+	}
+	hours := 24
+	if h := r.URL.Query().Get("hours"); h != "" {
+		if n, err := strconv.Atoi(h); err == nil && n > 0 {
+			hours = n
+		}
+	}
+	points, err := a.store.GetUsageOverTime(hours)
+	if err != nil {
+		writeErr(w, 500, err)
+		return
+	}
+	writeJSON(w, 200, points)
+}
+
+// TopModels: GET - returns top N models by usage
+func (a *AdminHandler) TopModels(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		w.WriteHeader(405)
+		return
+	}
+	limit := 10
+	if l := r.URL.Query().Get("limit"); l != "" {
+		if n, err := strconv.Atoi(l); err == nil && n > 0 {
+			limit = n
+		}
+	}
+	models, err := a.store.GetTopModels(limit)
+	if err != nil {
+		writeErr(w, 500, err)
+		return
+	}
+	writeJSON(w, 200, models)
 }

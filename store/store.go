@@ -28,6 +28,7 @@ type Usage struct {
 	Last429At   string `json:"last_429_at"`
 	LastUsedAt  string `json:"last_used_at"`
 	LastError   string `json:"last_error"`
+	LastProxy   string `json:"last_proxy"`
 }
 
 type RouterKey struct {
@@ -215,4 +216,35 @@ func (s *Store) GetAccount(id int64) (*Account, error) {
 		return nil, err
 	}
 	return &a, nil
+}
+
+
+// RequestLog represents an individual API request
+type RequestLog struct {
+	ID           int64  `json:"id"`
+	AccountID    int64  `json:"account_id"`
+	AccountEmail string `json:"account_email"`
+	Model        string `json:"model"`
+	RequestBody  string `json:"request_body"`
+	ResponseBody string `json:"response_body"`
+	ProxyURL     string `json:"proxy_url"`
+	DurationMs   int    `json:"duration_ms"`
+	ErrorMessage string `json:"error_message"`
+	CreatedAt    string `json:"created_at"`
+}
+
+
+// UsageTimePoint represents usage at a specific time period
+type UsageTimePoint struct {
+	TimePeriod     string `json:"time_period"`
+	Model          string `json:"model"`
+	TotalDurationMs int   `json:"total_duration_ms"`
+	RequestCount   int    `json:"request_count"`
+}
+
+// ModelUsage represents aggregated usage for a model
+type ModelUsage struct {
+	Model         string  `json:"model"`
+	TotalRequests int     `json:"total_requests"`
+	AvgDurationMs float64 `json:"avg_duration_ms"`
 }

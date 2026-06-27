@@ -147,7 +147,7 @@ func (h *Handler) proxyStream(w http.ResponseWriter, result *RouteResult, model 
 			if tokens > 0 {
 				// resolve upstream model id
 				if mdef, ok := h.store.GetModel(model); ok {
-					h.store.RecordUsage(result.AccountID, mdef.Upstream, tokens)
+					h.store.RecordUsage(result.AccountID, mdef.Upstream, tokens, result.ProxyURL)
 				}
 			}
 		}

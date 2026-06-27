@@ -488,8 +488,21 @@
               </button>
             </div>
           </div>
+          <div class="form-group span-2">
+            <label class="form-label" for="cfg-dottrick-toggle">Use Gmail dot trick</label>
+            <div class="toggle-switch-wrap">
+              <label class="toggle-switch">
+                <input type="checkbox" id="cfg-dottrick-toggle" onchange="updateDotTrickLabel(this.checked); toggleEmailDomainField(this.checked)">
+                <span class="toggle-slider"></span>
+              </label>
+              <span class="toggle-label" id="cfg-dottrick-label">Disabled</span>
+            </div>
+            <div class="form-help" style="margin-top: 8px; font-size: 12px; color: var(--text-dim);">
+              Inserts random dots in email addresses to generate unique variations (e.g., user.name@gmail.com vs username@gmail.com)
+            </div>
+          </div>
           <div class="form-group">
-            <label class="form-label" for="cfg-email-domain">Email Domain (catch-all)</label>
+            <label class="form-label" for="cfg-email-domain" id="label-email-domain">Email Domain (catch-all)</label>
             <input type="text" class="form-input" id="cfg-email-domain" placeholder="yourdomain.com" autocomplete="off">
           </div>
           <div class="form-group">
@@ -691,11 +704,15 @@ let logPolling = false;
 async function checkAuth() {
   try {
     const r = await fetch(API + '/admin/api/auth-check');
-    if (!r.ok) {
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok || !data.authenticated) {
       window.location.href = '/login.html';
+      return false;
     }
+    return true;
   } catch (e) {
     window.location.href = '/login.html';
+    return false;
   }
 }
 
@@ -795,7 +812,7 @@ function togglePw(inputId, btn) {
 }
 
 // --- Farm Config ---
-const CONFIG_FIELDS = ['IMAP_USER','IMAP_PASS','EMAIL_DOMAIN','IMAP_HOST','IMAP_PORT','FARM_PROXY','MAX_ATTEMPTS','RESULTS_FILE'];
+const CONFIG_FIELDS = ['IMAP_USER','IMAP_PASS','EMAIL_DOMAIN','IMAP_HOST','IMAP_PORT','FARM_PROXY','MAX_ATTEMPTS','RESULTS_FILE','DOT_TRICK_ENABLED'];
 const CONFIG_INPUT_MAP = {
   IMAP_USER: 'cfg-imap-user',
   IMAP_PASS: 'cfg-imap-pass',
@@ -804,7 +821,8 @@ const CONFIG_INPUT_MAP = {
   IMAP_PORT: 'cfg-imap-port',
   FARM_PROXY: 'cfg-farm-proxy',
   MAX_ATTEMPTS: 'cfg-max-attempts',
-  RESULTS_FILE: 'cfg-results-file'
+  RESULTS_FILE: 'cfg-results-file',
+  DOT_TRICK_ENABLED: 'cfg-dottrick-toggle'
 };
 
 async function loadFarmConfig() {
@@ -824,6 +842,14 @@ async function loadFarmConfig() {
         updateProxyToggleLabel(isPool);
         continue;
       }
+      if (key === 'DOT_TRICK_ENABLED') {
+        // Toggle ON if value === "1" or "true", else OFF
+        const toggle = document.getElementById('cfg-dottrick-toggle');
+        const isEnabled = (v === '1' || v === 'true');
+        toggle.checked = isEnabled;
+        updateDotTrickLabel(isEnabled);
+        continue;
+      }
       if (v !== null && v !== undefined) {
         el.value = v;
       }
@@ -841,6 +867,24 @@ function updateProxyToggleLabel(isPool) {
   label.textContent = isPool ? 'Pool (proxied)' : 'Direct (no proxy)';
 }
 
+function updateDotTrickLabel(isEnabled) {
+  const label = document.getElementById('cfg-dottrick-label');
+  if (!label) return;
+  label.textContent = isEnabled ? 'Enabled' : 'Disabled';
+}
+
+function toggleEmailDomainField(isDotTrickEnabled) {
+  const emailDomainGroup = document.getElementById('cfg-email-domain').parentElement;
+  const emailDomainLabel = document.getElementById('label-email-domain');
+  if (isDotTrickEnabled) {
+    // Hide Email Domain field when dot trick is enabled
+    emailDomainGroup.style.display = 'none';
+  } else {
+    // Show Email Domain field when dot trick is disabled
+    emailDomainGroup.style.display = '';
+  }
+}
+
 async function saveFarmConfig() {
   const btn = document.getElementById('btn-save-config');
   const orig = btn.innerHTML;
@@ -851,11 +895,19 @@ async function saveFarmConfig() {
     const toggle = document.getElementById('cfg-proxy-toggle');
     document.getElementById('cfg-farm-proxy').value = toggle.checked ? 'pool' : '';
 
+    // Sync dot trick toggle
+    const dottrickToggle = document.getElementById('cfg-dottrick-toggle');
+    document.getElementById('cfg-dottrick-toggle').value = dottrickToggle.checked ? '1' : '0';
+
     const payload = {};
     for (const key of CONFIG_FIELDS) {
       const el = document.getElementById(CONFIG_INPUT_MAP[key]);
       if (!el) continue;
       let val = el.value;
+      // For checkbox toggles, use checked state
+      if (key === 'DOT_TRICK_ENABLED') {
+        val = el.checked ? '1' : '0';
+      }
       payload[key] = String(val);
     }
     await api('/admin/api/farm/config', { method: 'POST', body: JSON.stringify(payload) });
