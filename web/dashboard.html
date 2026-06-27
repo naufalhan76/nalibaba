@@ -732,17 +732,23 @@ async function revokeKey(key) {
 async function loadBaseUrl() {
   try {
     const settings = await api('/admin/api/settings');
-    let baseUrl = settings.custom_domain || window.location.origin;
-    // If no custom domain, use the current host with port 7622
-    if (!settings.custom_domain) {
-      const host = window.location.hostname;
-      baseUrl = `http://${host}:7622`;
+    const host = window.location.hostname;
+    const isIP = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host);
+    let baseUrl;
+    if (isIP) {
+      // Direct IP access — need port
+      baseUrl = `http://${host}:7622/v1`;
+    } else {
+      // Domain access (via CF tunnel) — no port needed
+      baseUrl = `https://${host}/v1`;
     }
     document.getElementById('base-url').textContent = baseUrl;
   } catch (e) {
-    // Fallback to current origin
     const host = window.location.hostname;
-    document.getElementById('base-url').textContent = `http://${host}:7622`;
+    const isIP = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host);
+    document.getElementById('base-url').textContent = isIP
+      ? `http://${host}:7622/v1`
+      : `https://${host}/v1`;
   }
 }
 
