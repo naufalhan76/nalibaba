@@ -159,7 +159,7 @@ Optional:
 
 ### 5. Gmail Dot Trick (optional)
 Enable in web UI at `/farm.html`:
-- **Use Gmail dot trick**: Insert random dots in Gmail username (e.g., `g.a.r.n.a.s.u.n.5.1.4@gmail.com`)
+- **Use Gmail dot trick**: Insert random dots in Gmail username (e.g., `y.o.u.r.n.a.m.e@gmail.com`)
 - Gmail ignores dots, so all variations deliver to the same inbox
 - Useful for generating multiple "unique" emails from one Gmail account
 - When enabled, Email Domain field is hidden (uses Gmail domain automatically)
