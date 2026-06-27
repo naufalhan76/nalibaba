@@ -101,12 +101,20 @@ Verify: you see JSON with model list (nalibaba-qwen-plus, nalibaba-glm-5.2, etc.
     -d '{"model":"nalibaba-qwen-plus","messages":[{"role":"user","content":"say hello"}],"max_tokens":10}'
 Verify: you get a valid chat completion response with content.
 
+## Authentication
+The web dashboard requires login. Default credentials:
+- **Username:** admin
+- **Password:** 123456
+
+**Important:** Change the default password immediately via Settings page after first login.
+
 ## Optional: Web Dashboard
-Open in browser: http://YOUR_SERVER_IP:7622/dashboard.html
+Open in browser: http://YOUR_SERVER_IP:7622
 - Generate/revoke router keys
-- View usage statistics
+- View usage statistics and request logs
 - Manage accounts
-- Configure farm (if farm.py available)
+- Configure farm (IMAP, proxy, dot trick)
+- Settings (proxy toggle, routing method, change password)
 
 ## Optional: Cloudflare Tunnel
 To expose the router publicly:
@@ -117,22 +125,91 @@ To expose the router publicly:
 3. Restart cloudflared: sudo systemctl restart cloudflared
 Note: Cloudflare Bot Fight Mode may block requests without a User-Agent. Clients must send a User-Agent header.
 
-## Optional: Farm Setup (for auto-registering new Alibaba accounts)
-The farm feature requires farm.py (not included in this repo — it's an external dependency).
-If you have farm.py:
-1. Place it in the parent directory (FARM_DIR)
-2. Install Python deps: pip install camoufox playwright python-dotenv
-3. Install Xvfb: sudo apt install xvfb
-4. Configure via web UI at /farm.html (IMAP user, password, email domain)
-5. Start farm from web UI or: curl -X POST http://127.0.0.1:7622/admin/api/farm/start
+## Optional: Farm Setup (auto-register new Alibaba accounts)
+The farm module is included in the repo at `farm/farm.py`. It automates Alibaba Cloud account registration using Camoufox browser automation.
+
+### 1. Install system dependencies
+  sudo apt-get update
+  sudo apt-get install -y xvfb python3-pip python3-venv
+Verify: which xvfb-run && python3 --version
+
+### 2. Set up Python environment
+  cd farm
+  python3 -m venv .venv
+  source .venv/bin/activate
+  pip install -r requirements.txt
+Verify: pip list | grep -E "camoufox|playwright"
+
+### 3. Install Camoufox browser
+  camoufox fetch
+Verify: camoufox --version
+
+### 4. Configure farm credentials
+  cp .env.example .env
+Edit `.env` with your credentials:
+  nano .env
+
+Required:
+- **IMAP_USER**: Your Gmail address (for OTP retrieval)
+- **IMAP_PASS**: Gmail App Password (16-char, spaces ok)
+  - Go to: Google Account → Security → 2-Step Verification → App passwords
+- **EMAIL_DOMAIN**: Your email domain (e.g., gmail.com)
+
+Optional:
+- **FARM_PROXY**: HTTP proxy for registration (format: http://user:pass@host:port)
+- **MAX_CONCURRENT**: Number of parallel registrations (default: 1)
+
+### 5. Gmail Dot Trick (optional)
+Enable in web UI at `/farm.html`:
+- **Gmail Dot Trick**: Insert random dots in Gmail username (e.g., `g.a.r.n.a.s.u.n.5.1.4@gmail.com`)
+- Gmail ignores dots, so all variations deliver to the same inbox
+- Useful for generating multiple "unique" emails from one Gmail account
+- Disable "Email Domain" field when using dot trick
+
+### 6. Start the farm
+Via web UI at `/farm.html`:
+1. Configure IMAP credentials
+2. Set max attempts (default: 10)
+3. Toggle "Use Proxy Pool" if needed
+4. Click "Start Farm"
+
+Or via API:
+  curl -X POST http://127.0.0.1:7622/admin/api/farm/start \
+    -H "Content-Type: application/json" \
+    -d '{"max_attempts": 10}'
+
+Monitor progress:
+  tail -f data/logs/farm-*.log
+
+### 7. Auto-import results
+The router automatically imports new accounts from `results.json` every 30 seconds.
+Check imported accounts via web UI at `/accounts.html` or:
+  curl http://127.0.0.1:7622/admin/api/accounts
 
 ## Troubleshooting
-- "no such column: is_dead" → delete data/router.db and restart (migration will rebuild schema)
-- "no eligible account" → import accounts: go run ./cmd/importer ../results.json
-- 401 invalid router key → generate new key via admin API
-- Farm "camoufox not found" → use venv python: .venv/bin/python3, or pip install camoufox
-- Farm log empty → ensure PYTHONUNBUFFERED=1 is set (router sets this automatically)
+
+### Router Issues
+- **"no such column: is_dead"** → delete data/router.db and restart (migration will rebuild schema)
+- **"no eligible account"** → import accounts: go run ./cmd/importer ../results.json
+- **401 invalid router key** → generate new key via admin API
+- **Login page keeps redirecting** → clear browser cookies, default password is 123456
+
+### Farm Issues
+- **"camoufox not found"** → run `camoufox fetch` or reinstall: `pip install -U camoufox`
+- **"playwright not found"** → run `playwright install chromium`
+- **Farm log empty** → ensure PYTHONUNBUFFERED=1 is set (router sets this automatically)
+- **"IMAP authentication failed"** → check IMAP_PASS (must be App Password, not regular password)
+- **OTP not received** → verify EMAIL_DOMAIN matches your actual email domain
+- **Slider solving fails** → ensure uinput module is loaded: `sudo modprobe uinput`
+- **Proxy connection failed** → check FARM_PROXY format (must include http://)
+
+### Performance Issues
+- **Slow registration** → reduce MAX_CONCURRENT or use faster proxy
+- **High memory usage** → check for zombie Camoufox processes: `ps aux | grep camoufox`
+- **Disk full** → rotate logs: `logrotate data/logs/farm-*.log`
 
 ## Done
 The router is now running at http://127.0.0.1:7622. Use it as an 0penAI-compatible API endpoint with any client (Hermes, OpenCode, curl, etc.).
+
+For farm automation, configure via web UI at http://YOUR_SERVER_IP:7622/farm.html
 ```
