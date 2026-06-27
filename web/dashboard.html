@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dashboard — Alibaba Router</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
   :root {
     --bg: #0a0a0a;
@@ -437,7 +438,7 @@
           Usage Over Time
         </div>
         <div class="card-body" style="padding: 16px;">
-          <canvas id="usageChart" width="600" height="300" style="width: 100%; height: 300px;"></canvas>
+          <div id="usageChart" style="width: 100%; height: 300px;"></div>
         </div>
       </div>
       <div class="card">
@@ -803,7 +804,7 @@ setInterval(() => { loadStats(); loadDeadCount(); loadHealth(); }, 10000);
 
 
 // --- Usage Charts ---
-let usageChart = null;
+let usageChartInstance = null;
 
 async function loadUsageCharts() {
   try {
@@ -823,30 +824,22 @@ async function loadUsageCharts() {
 }
 
 function renderUsageChart(data) {
-  const canvas = document.getElementById('usageChart');
-  if (!canvas) return;
+  const chartContainer = document.getElementById('usageChart');
+  if (!chartContainer) return;
 
-  // Set actual pixel dimensions based on CSS size
-  const rect = canvas.getBoundingClientRect();
-  const dpr = window.devicePixelRatio || 1;
-  canvas.width = rect.width * dpr;
-  canvas.height = 300 * dpr;
-  const ctx = canvas.getContext('2d');
-  ctx.scale(dpr, dpr);
-
-  const W = rect.width;
-  const H = 300;
-
-  // Clear canvas
-  ctx.clearRect(0, 0, W, H);
+  // Destroy existing chart
+  if (usageChartInstance) {
+    usageChartInstance.destroy();
+  }
 
   if (!data || data.length === 0) {
-    ctx.fillStyle = '#5a5a5a';
-    ctx.font = '13px -apple-system, BlinkMacSystemFont, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('No usage data in the last 24 hours', W / 2, H / 2);
+    chartContainer.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: var(--text-muted);">No usage data in the last 24 hours</div>';
     return;
   }
+
+  // Create canvas
+  chartContainer.innerHTML = '<canvas id="usageCanvas"></canvas>';
+  const ctx = document.getElementById('usageCanvas').getContext('2d');
 
   // Group by model
   const models = {};
@@ -871,107 +864,112 @@ function renderUsageChart(data) {
     'rgba(255, 71, 87, 1)',   // red
     'rgba(155, 89, 182, 1)',  // purple
     'rgba(46, 213, 200, 1)',  // teal
+    'rgba(241, 196, 15, 1)',  // yellow
+    'rgba(52, 152, 219, 1)',  // blue
   ];
 
-  // Chart dimensions
-  const padding = { top: 20, right: 20, bottom: 60, left: 50 };
-  const chartWidth = W - padding.left - padding.right;
-  const chartHeight = H - padding.top - padding.bottom;
-
-  // Find max value
-  let maxValue = 0;
-  modelNames.forEach(model => {
-    sortedPeriods.forEach(period => {
-      const value = models[model][period] || 0;
-      if (value > maxValue) maxValue = value;
-    });
+  // Prepare datasets
+  const datasets = modelNames.map((model, idx) => {
+    const color = colors[idx % colors.length];
+    const dataPoints = sortedPeriods.map(period => models[model][period] || 0);
+    
+    return {
+      label: model,
+      data: dataPoints,
+      borderColor: color,
+      backgroundColor: color.replace(', 1)', ', 0.1)'),
+      borderWidth: 2,
+      pointRadius: 3,
+      pointHoverRadius: 5,
+      pointBackgroundColor: color,
+      pointBorderColor: color,
+      tension: 0.4,
+      fill: false
+    };
   });
-  if (maxValue === 0) maxValue = 1;
 
-  // Draw axes
-  ctx.strokeStyle = '#2a2a2a';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(padding.left, padding.top);
-  ctx.lineTo(padding.left, padding.top + chartHeight);
-  ctx.lineTo(padding.left + chartWidth, padding.top + chartHeight);
-  ctx.stroke();
+  // Format time labels (extract HH:00 from "2026-06-27 14:00")
+  const labels = sortedPeriods.map(period => {
+    const time = period.split(' ')[1];
+    return time ? time.split(':')[0] + ':00' : period;
+  });
 
-  // Draw grid lines
-  ctx.strokeStyle = 'rgba(42, 42, 42, 0.5)';
-  ctx.lineWidth = 0.5;
-  for (let i = 0; i <= 4; i++) {
-    const y = padding.top + (chartHeight / 4) * i;
-    ctx.beginPath();
-    ctx.moveTo(padding.left, y);
-    ctx.lineTo(padding.left + chartWidth, y);
-    ctx.stroke();
-
-    // Y-axis labels
-    const value = Math.round(maxValue - (maxValue / 4) * i);
-    ctx.fillStyle = '#5a5a5a';
-    ctx.font = '11px monospace';
-    ctx.textAlign = 'right';
-    ctx.fillText(value.toString(), padding.left - 8, y + 4);
-  }
-
-  // Draw lines for each model
-  modelNames.forEach((model, modelIndex) => {
-    const color = colors[modelIndex % colors.length];
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-
-    let firstPoint = true;
-    sortedPeriods.forEach((period, periodIndex) => {
-      const x = padding.left + (chartWidth / Math.max(sortedPeriods.length - 1, 1)) * periodIndex;
-      const value = models[model][period] || 0;
-      const y = padding.top + chartHeight - (value / maxValue) * chartHeight;
-
-      if (firstPoint) {
-        ctx.moveTo(x, y);
-        firstPoint = false;
-      } else {
-        ctx.lineTo(x, y);
+  // Create chart
+  usageChartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: datasets
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: {
+        mode: 'index',
+        intersect: false,
+      },
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: {
+            color: '#e4e4e4',
+            font: {
+              size: 11,
+              family: '-apple-system, BlinkMacSystemFont, sans-serif'
+            },
+            padding: 15,
+            usePointStyle: true,
+            pointStyle: 'rect'
+          }
+        },
+        tooltip: {
+          backgroundColor: 'rgba(26, 26, 26, 0.95)',
+          titleColor: '#e4e4e4',
+          bodyColor: '#e4e4e4',
+          borderColor: 'rgba(42, 42, 42, 0.8)',
+          borderWidth: 1,
+          padding: 12,
+          displayColors: true,
+          callbacks: {
+            label: function(context) {
+              return context.dataset.label + ': ' + context.parsed.y + ' requests';
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: {
+            color: 'rgba(42, 42, 42, 0.5)',
+            drawBorder: false
+          },
+          ticks: {
+            color: '#5a5a5a',
+            font: {
+              size: 10,
+              family: 'monospace'
+            },
+            maxRotation: 0,
+            autoSkip: true,
+            maxTicksLimit: 8
+          }
+        },
+        y: {
+          beginAtZero: true,
+          grid: {
+            color: 'rgba(42, 42, 42, 0.5)',
+            drawBorder: false
+          },
+          ticks: {
+            color: '#5a5a5a',
+            font: {
+              size: 11,
+              family: 'monospace'
+            },
+            stepSize: 1
+          }
+        }
       }
-    });
-
-    ctx.stroke();
-
-    // Draw dots at data points
-    ctx.fillStyle = color;
-    sortedPeriods.forEach((period, periodIndex) => {
-      const x = padding.left + (chartWidth / Math.max(sortedPeriods.length - 1, 1)) * periodIndex;
-      const value = models[model][period] || 0;
-      const y = padding.top + chartHeight - (value / maxValue) * chartHeight;
-      ctx.beginPath();
-      ctx.arc(x, y, 3, 0, Math.PI * 2);
-      ctx.fill();
-    });
-
-    // Draw legend
-    const legendY = H - 40 + (modelIndex % 2) * 15;
-    const legendX = padding.left + (modelIndex % 3) * Math.floor(chartWidth / 3);
-
-    ctx.fillStyle = color;
-    ctx.fillRect(legendX, legendY, 12, 12);
-    ctx.fillStyle = '#e4e4e4';
-    ctx.font = '11px -apple-system, BlinkMacSystemFont, sans-serif';
-    ctx.textAlign = 'left';
-    const displayName = model.length > 20 ? model.slice(0, 18) + '..' : model;
-    ctx.fillText(displayName, legendX + 16, legendY + 10);
-  });
-
-  // X-axis labels (time periods)
-  ctx.fillStyle = '#5a5a5a';
-  ctx.font = '10px monospace';
-  ctx.textAlign = 'center';
-  const step = Math.max(1, Math.floor(sortedPeriods.length / 6));
-  sortedPeriods.forEach((period, index) => {
-    if (index % step === 0) {
-      const x = padding.left + (chartWidth / Math.max(sortedPeriods.length - 1, 1)) * index;
-      const time = period.split(' ')[1] || period; // Extract time part
-      ctx.fillText(time, x, H - 50);
     }
   });
 }
