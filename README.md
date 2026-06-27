@@ -1,6 +1,43 @@
 # Nalibaba Router
 
-A high-performance **OpenAI-compatible LLM router** for Alibaba Cloud Model Studio (DashScope) accounts. Built in Go, it fronts multiple Alibaba accounts with round-robin load balancing, automatic quota exhaustion detection, proxy pool support, and a built-in account farm — all behind a single API endpoint.
+A high-performance **0penAI-compatible LLM router** for Alibaba Cloud Model Studio (DashScope) accounts. Built in Go, it fronts multiple Alibaba accounts with round-robin load balancing, automatic quota exhaustion detection, proxy pool support, and a built-in account farm — all behind a single API endpoint.
+
+## Installation
+
+### For LLM
+
+Paste the prompt below into an AI coding agent (Code Assistant, Codex, Cursor, Claude, etc.) on a Linux VPS — it will clone, build, configure, and launch the router automatically:
+
+> **See [`INSTALL.md`](./INSTALL.md)** for the full copy-paste prompt. Copy everything inside the code block and paste it into the AI agent.
+
+The prompt is self-contained and covers all 12 steps: Go install, clone, build, account import, systemd service, key generation, and verification — with per-step checks. The AI agent will execute each command and verify before continuing.
+
+### For Human
+
+```bash
+# 1. Clone & build
+git clone https://github.com/naufalhan76/nalibaba.git
+cd nalibaba
+go build -o bin/alibaba-router .
+
+# 2. Import accounts (results.json = [{"email":"...","api_key":"sk-ws-..."}])
+cp /path/to/results.json ../results.json
+go run ./cmd/importer ../results.json
+
+# 3. Run
+./bin/alibaba-router   # → listening on :7622
+
+# 4. Generate router key (save the nh-xxx key)
+curl -X POST http://127.0.0.1:7622/admin/api/keys -H 'Content-Type: application/json' -d '{"label":"default"}'
+
+# 5. Test
+curl http://127.0.0.1:7622/v1/chat/completions \
+  -H "Authorization: Bearer *** \
+  -H "Content-Type: application/json" \
+  -d '{"model":"nalibaba-qwen-plus","messages":[{"role":"user","content":"hello"}],"max_tokens":10}'
+```
+
+For systemd service, Cloudflare tunnel, and farm setup, see the [full manual](./INSTALL.md) or [Quick Start](#quick-start-manual) section below.
 
 ## Why?
 
@@ -87,14 +124,6 @@ Client (Hermes / OpenCode / curl)
                ▼
    https://dashscope-intl.aliyuncs.com/compatible-mode/v1
 ```
-
-## AI Agent Installation (one-paste setup)
-
-Paste this prompt into any AI coding agent (Code Assistant, Codex, Cursor, etc.) — it will clone, build, configure, and launch the router automatically on a Linux VPS:
-
-> **See [`INSTALL.md`](./INSTALL.md)** for the full copy-paste prompt.
-
-The prompt covers: Go install, clone, build, account import, systemd service setup, key generation, and verification — all automated with per-step checks.
 
 ## Quick Start (manual)
 
