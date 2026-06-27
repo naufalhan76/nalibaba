@@ -11,20 +11,36 @@ const MaxRetries = 5
 
 // Router handles request routing across accounts.
 type Router struct {
-	store     *store.Store
-	upstream  *UpstreamClient
-	proxies   *ProxyManager
-	mu        sync.Mutex
-	pointers  map[string]int // model -> last used index in eligible list
+	store         *store.Store
+	upstream      *UpstreamClient
+	proxies       *ProxyManager
+	mu            sync.Mutex
+	pointers      map[string]int // model -> last used index in eligible list
+	routingMethod string         // "round_robin" or "sticky"
 }
 
 func New(s *store.Store, baseURL string) *Router {
 	return &Router{
-		store:    s,
-		upstream: NewUpstreamClient(baseURL),
-		proxies:  NewProxyManager(s),
-		pointers: make(map[string]int),
+		store:         s,
+		upstream:      NewUpstreamClient(baseURL),
+		proxies:       NewProxyManager(s),
+		pointers:      make(map[string]int),
+		routingMethod: "round_robin",
 	}
+}
+
+// SetRoutingMethod updates the routing method.
+func (r *Router) SetRoutingMethod(method string) {
+	r.mu.Lock()
+	r.routingMethod = method
+	r.mu.Unlock()
+}
+
+// GetRoutingMethod returns the current routing method.
+func (r *Router) GetRoutingMethod() string {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.routingMethod
 }
 
 // PickAccount selects next account by round-robin among eligible (non-exhausted) accounts.
@@ -37,9 +53,16 @@ func (r *Router) PickAccount(model string) (int64, error) {
 		return 0, ErrNoEligibleAccount
 	}
 	r.mu.Lock()
+	defer r.mu.Unlock()
+	
+	// Sticky mode: always pick first eligible account
+	if r.routingMethod == "sticky" {
+		return eligible[0], nil
+	}
+	
+	// Round-robin mode
 	idx := r.pointers[model] % len(eligible)
 	r.pointers[model] = (idx + 1) % len(eligible)
-	r.mu.Unlock()
 	return eligible[idx], nil
 }
 

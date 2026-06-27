@@ -39,6 +39,11 @@ func main() {
 	r := router.New(s, baseURL)
 	h := router.NewHandler(r, s)
 
+	// Load routing method from settings
+	if settings, err := s.GetSettings(); err == nil {
+		r.SetRoutingMethod(settings.RoutingMethod)
+	}
+
 	mux := http.NewServeMux()
 	// 0penAI-compatible API
 	mux.HandleFunc("/v1/models", h.Models)
@@ -48,25 +53,40 @@ func main() {
 	})
 
 	// Admin API
-	ah := &AdminHandler{store: s, farmDir: farmDir}
-	mux.HandleFunc("/admin/api/keys", ah.Keys)
-	mux.HandleFunc("/admin/api/accounts", ah.Accounts)
-	mux.HandleFunc("/admin/api/accounts/dead", ah.DeadAccounts)
-	mux.HandleFunc("/admin/api/accounts/revive", ah.ReviveAccount)
-	mux.HandleFunc("/admin/api/usage", ah.Usage)
-	mux.HandleFunc("/admin/api/import", ah.Import)
-	mux.HandleFunc("/admin/api/reset-slot", ah.ResetSlot)
-	mux.HandleFunc("/admin/api/reset-account", ah.ResetAccount)
-	mux.HandleFunc("/admin/api/stats", ah.Stats)
-	mux.HandleFunc("/admin/api/models", ah.Models)
-	mux.HandleFunc("/admin/api/proxies", ah.Proxies)
-	mux.HandleFunc("/admin/api/proxies/check", ah.ProxyCheck)
-	mux.HandleFunc("/admin/api/farm/start", ah.FarmStart)
-	mux.HandleFunc("/admin/api/farm/stop", ah.FarmStop)
-	mux.HandleFunc("/admin/api/farm/status", ah.FarmStatus)
-	mux.HandleFunc("/admin/api/farm/runs", ah.FarmRuns)
-	mux.HandleFunc("/admin/api/farm/log", ah.FarmLog)
-	mux.HandleFunc("/admin/api/farm/config", ah.FarmConfig)
+	ah := &AdminHandler{store: s, farmDir: farmDir, router: r}
+	// Auth routes (no middleware)
+	mux.HandleFunc("/admin/api/login", ah.Login)
+	mux.HandleFunc("/admin/api/logout", ah.Logout)
+	mux.HandleFunc("/admin/api/auth-check", ah.AuthCheck)
+	// Protected routes (require auth)
+	mux.HandleFunc("/admin/api/keys", AuthMiddleware(ah.Keys))
+	mux.HandleFunc("/admin/api/accounts", AuthMiddleware(ah.Accounts))
+	mux.HandleFunc("/admin/api/accounts/dead", AuthMiddleware(ah.DeadAccounts))
+	mux.HandleFunc("/admin/api/accounts/revive", AuthMiddleware(ah.ReviveAccount))
+	mux.HandleFunc("/admin/api/usage", AuthMiddleware(ah.Usage))
+	mux.HandleFunc("/admin/api/import", AuthMiddleware(ah.Import))
+	mux.HandleFunc("/admin/api/reset-slot", AuthMiddleware(ah.ResetSlot))
+	mux.HandleFunc("/admin/api/reset-account", AuthMiddleware(ah.ResetAccount))
+	mux.HandleFunc("/admin/api/stats", AuthMiddleware(ah.Stats))
+	mux.HandleFunc("/admin/api/models", AuthMiddleware(ah.Models))
+	mux.HandleFunc("/admin/api/proxies", AuthMiddleware(ah.Proxies))
+	mux.HandleFunc("/admin/api/proxies/check", AuthMiddleware(ah.ProxyCheck))
+	mux.HandleFunc("/admin/api/farm/start", AuthMiddleware(ah.FarmStart))
+	mux.HandleFunc("/admin/api/farm/stop", AuthMiddleware(ah.FarmStop))
+	mux.HandleFunc("/admin/api/farm/status", AuthMiddleware(ah.FarmStatus))
+	mux.HandleFunc("/admin/api/farm/runs", AuthMiddleware(ah.FarmRuns))
+	mux.HandleFunc("/admin/api/farm/log", AuthMiddleware(ah.FarmLog))
+	mux.HandleFunc("/admin/api/farm/config", AuthMiddleware(ah.FarmConfig))
+	mux.HandleFunc("/admin/api/settings", AuthMiddleware(func(w http.ResponseWriter, req *http.Request) {
+		if req.Method == "GET" {
+			ah.GetSettings(w, req)
+		} else if req.Method == "POST" {
+			ah.SaveSettings(w, req)
+		} else {
+			w.WriteHeader(405)
+		}
+	}))
+	mux.HandleFunc("/admin/api/change-password", AuthMiddleware(ah.ChangePassword))
 
 	// Web UI
 	mux.HandleFunc("/", serveWeb)

@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Settings — Alibaba Router</title>
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --card: #1a1a1a;
+    --border: #2a2a2a;
+    --border-hover: #3a3a3a;
+    --text: #e4e4e4;
+    --text-dim: #8a8a8a;
+    --text-muted: #5a5a5a;
+    --accent: #00d4ff;
+    --accent-dim: #0099bb;
+    --accent-bg: rgba(0, 212, 255, 0.08);
+    --danger: #ff4757;
+    --danger-bg: rgba(255, 71, 87, 0.1);
+    --success: #2ed573;
+    --success-bg: rgba(46, 213, 115, 0.1);
+    --warning: #ffa502;
+    --warning-bg: rgba(255, 165, 2, 0.1);
+    --mono: 'SF Mono', 'Fira Code', 'Cascadia Code', 'JetBrains Mono', Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+    --radius: 8px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  /* Nav */
+  .nav {
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .nav-inner {
+    max-width: 1200px; margin: 0 auto;
+    display: flex; align-items: center; gap: 8px;
+    padding: 0 24px; height: 52px;
+  }
+  .nav-brand {
+    font-weight: 600; font-size: 15px;
+    color: var(--text); margin-right: 16px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .nav-brand svg { color: var(--accent); }
+  .nav-links { display: flex; gap: 2px; flex: 1; }
+  .nav-link {
+    padding: 6px 14px; border-radius: 6px;
+    color: var(--text-dim); text-decoration: none;
+    font-size: 13px; font-weight: 500;
+    transition: all 0.15s;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .nav-link:hover { color: var(--text); background: rgba(255,255,255,0.04); }
+  .nav-link.active { color: var(--accent); background: var(--accent-bg); }
+  .nav-link svg { opacity: 0.8; }
+
+  /* Layout */
+  .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+  .section { margin-bottom: 32px; }
+  .section-title {
+    font-size: 14px; font-weight: 600;
+    color: var(--text); display: flex; align-items: center; gap: 8px;
+    margin-bottom: 14px;
+  }
+  .section-title svg { color: var(--text-dim); }
+
+  /* Card */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .card-body { padding: 20px; }
+
+  /* Settings row */
+  .settings-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .settings-row:last-child { border-bottom: none; }
+  .settings-label {
+    font-size: 13px;
+    color: var(--text);
+  }
+  .settings-desc {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-top: 2px;
+  }
+
+  /* Toggle switch */
+  .toggle {
+    position: relative;
+    width: 44px;
+    height: 24px;
+    cursor: pointer;
+  }
+  .toggle input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+  .toggle-slider {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: var(--border);
+    border-radius: 12px;
+    transition: 0.2s;
+  }
+  .toggle-slider:before {
+    content: '';
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    left: 3px;
+    bottom: 3px;
+    background: var(--text);
+    border-radius: 50%;
+    transition: 0.2s;
+  }
+  .toggle input:checked + .toggle-slider {
+    background: var(--accent-dim);
+  }
+  .toggle input:checked + .toggle-slider:before {
+    transform: translateX(20px);
+    background: var(--accent);
+  }
+
+  /* Radio buttons */
+  .radio-group {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+  }
+  .radio-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--text-dim);
+    padding: 8px 14px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    transition: all 0.15s;
+  }
+  .radio-option:hover {
+    border-color: var(--border-hover);
+    color: var(--text);
+  }
+  .radio-option.selected {
+    border-color: var(--accent-dim);
+    background: var(--accent-bg);
+    color: var(--accent);
+  }
+  .radio-option input[type="radio"] {
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--border);
+    border-radius: 50%;
+    cursor: pointer;
+    position: relative;
+  }
+  .radio-option input[type="radio"]:checked {
+    border-color: var(--accent);
+  }
+  .radio-option input[type="radio"]:checked::after {
+    content: '';
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    background: var(--accent);
+    border-radius: 50%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  /* Form */
+  .form-group {
+    margin-bottom: 14px;
+  }
+  .form-group label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+  .form-group input {
+    width: 100%;
+    max-width: 360px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 13px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    transition: border-color 0.15s;
+  }
+  .form-group input:focus {
+    outline: none;
+    border-color: var(--accent-dim);
+  }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px; border-radius: 6px;
+    border: 1px solid var(--border); background: transparent;
+    color: var(--text); font-family: var(--sans); font-size: 12px;
+    font-weight: 500; cursor: pointer;
+    transition: all 0.15s; white-space: nowrap;
+  }
+  .btn:hover { border-color: var(--border-hover); background: rgba(255,255,255,0.04); }
+  .btn svg { flex-shrink: 0; }
+  .btn-primary { border-color: var(--accent-dim); color: var(--accent); background: var(--accent-bg); }
+  .btn-primary:hover { background: rgba(0, 212, 255, 0.15); border-color: var(--accent); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .save-section {
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+
+  /* Toast */
+  .toast-container {
+    position: fixed; bottom: 24px; right: 24px; z-index: 1000;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .toast {
+    background: var(--card); border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    padding: 10px 16px; border-radius: 6px;
+    font-size: 13px; color: var(--text);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    animation: slideIn 0.2s ease;
+    max-width: 360px;
+  }
+  .toast.error { border-left-color: var(--danger); }
+  .toast.success { border-left-color: var(--success); }
+  @keyframes slideIn {
+    from { transform: translateX(20px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+
+  /* Loading */
+  .loading {
+    display: inline-block; width: 12px; height: 12px;
+    border: 2px solid var(--border); border-top-color: var(--accent);
+    border-radius: 50%; animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Responsive */
+  @media (max-width: 900px) {
+    .radio-group { flex-direction: column; gap: 8px; }
+  }
+  @media (max-width: 600px) {
+    .container { padding: 16px; }
+    .nav-inner { padding: 0 16px; }
+    .nav-brand span { display: none; }
+    .form-group input { max-width: 100%; }
+  }
+
+  /* Hamburger toggle - hidden on desktop */
+  .nav-toggle {
+    display: none;
+    background: none; border: 1px solid var(--border);
+    border-radius: 6px; padding: 6px 8px;
+    cursor: pointer; color: var(--text);
+    margin-left: auto;
+  }
+  .nav-toggle svg { display: block; }
+
+  @media (max-width: 900px) {
+    .nav-toggle { display: block; }
+    .nav-links {
+      display: none;
+      flex-direction: column;
+      position: absolute;
+      top: 52px; left: 0; right: 0;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      padding: 8px 16px 12px;
+      gap: 4px;
+      z-index: 100;
+    }
+    .nav-links.open { display: flex; }
+    .nav-link { padding: 10px 14px; width: 100%; }
+    .nav-inner { position: relative; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav class="nav">
+  <div class="nav-inner">
+    <div class="nav-brand">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="2" y="14" width="20" height="8" rx="2"/><path d="M6.01 18H6M10 18h.01M15 10v4M17.84 7.17a4 4 0 0 0-5.66 0M20.66 4.34a8 8 0 0 0-11.31 0"/>
+      </svg>
+      <span>Alibaba Router</span>
+    </div>
+    <button class="nav-toggle" onclick="toggleNav()" aria-label="Toggle navigation">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <div class="nav-links">
+      <a href="/dashboard.html" class="nav-link">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </a>
+      <a href="/usage.html" class="nav-link">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Usage
+      </a>
+      <a href="/accounts.html" class="nav-link">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Accounts
+      </a>
+      <a href="/models.html" class="nav-link">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        Models
+      </a>
+      <a href="/proxies.html" class="nav-link">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        Proxies
+      </a>
+      <a href="/farm.html" class="nav-link">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/></svg>
+        Farm
+      </a>
+      <a href="/settings.html" class="nav-link active">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Settings
+      </a>
+    </div>
+  </div>
+</nav>
+
+<div class="container">
+
+  <!-- Proxy Settings -->
+  <div class="section">
+    <div class="section-title">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+      Proxy Settings
+    </div>
+    <div class="card">
+      <div class="card-body">
+        <div class="settings-row">
+          <div>
+            <div class="settings-label">Enable Proxy Pool for Upstream Requests</div>
+            <div class="settings-desc">Route outgoing requests through the configured proxy pool</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="proxy-enabled">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="save-section">
+          <button class="btn btn-primary" onclick="saveProxySettings()" id="btn-save-proxy">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Routing Method -->
+  <div class="section">
+    <div class="section-title">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+      Routing Method
+    </div>
+    <div class="card">
+      <div class="card-body">
+        <div class="settings-label" style="margin-bottom: 4px;">How to select upstream accounts</div>
+        <div class="settings-desc" style="margin-bottom: 12px;">Choose how requests are distributed across accounts</div>
+        <div class="radio-group" id="routing-method">
+          <label class="radio-option selected" data-value="round_robin">
+            <input type="radio" name="routing" value="round_robin" checked>
+            <div>
+              <div style="font-weight:500;">Round Robin</div>
+              <div style="font-size:11px;color:var(--text-muted);">Distribute evenly across accounts</div>
+            </div>
+          </label>
+          <label class="radio-option" data-value="sticky">
+            <input type="radio" name="routing" value="sticky">
+            <div>
+              <div style="font-weight:500;">Sticky</div>
+              <div style="font-size:11px;color:var(--text-muted);">Stick to one account until exhausted</div>
+            </div>
+          </label>
+        </div>
+        <div class="save-section">
+          <button class="btn btn-primary" onclick="saveRoutingSettings()" id="btn-save-routing">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Change Password -->
+  <div class="section">
+    <div class="section-title">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      Change Password
+    </div>
+    <div class="card">
+      <div class="card-body">
+        <div class="form-group">
+          <label for="old-password">Current Password</label>
+          <input type="password" id="old-password" autocomplete="current-password">
+        </div>
+        <div class="form-group">
+          <label for="new-password">New Password</label>
+          <input type="password" id="new-password" autocomplete="new-password">
+        </div>
+        <div class="form-group">
+          <label for="confirm-password">Confirm New Password</label>
+          <input type="password" id="confirm-password" autocomplete="new-password">
+        </div>
+        <div class="save-section">
+          <button class="btn btn-primary" onclick="changePassword()" id="btn-change-pw">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            Change Password
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast-container" id="toasts"></div>
+
+<script>
+const API = '';
+
+// --- Nav toggle (mobile) ---
+function toggleNav() {
+  const links = document.querySelector('.nav-links');
+  links.classList.toggle('open');
+}
+document.querySelectorAll('.nav-link').forEach(l => l.addEventListener('click', () => {
+  document.querySelector('.nav-links').classList.remove('open');
+}));
+
+// --- Auth check ---
+async function checkAuth() {
+  try {
+    const r = await fetch(API + '/admin/api/auth-check');
+    if (!r.ok) {
+      window.location.href = '/login.html';
+    }
+  } catch (e) {
+    window.location.href = '/login.html';
+  }
+}
+
+// --- Helpers ---
+function toast(msg, type = '') {
+  const c = document.getElementById('toasts');
+  const t = document.createElement('div');
+  t.className = 'toast ' + type;
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 200); }, 3000);
+}
+
+async function api(path, opts = {}) {
+  try {
+    const r = await fetch(API + path, {
+      headers: { 'Content-Type': 'application/json' },
+      ...opts
+    });
+    if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+    const ct = r.headers.get('content-type') || '';
+    if (ct.includes('application/json')) return await r.json();
+    return await r.text();
+  } catch (e) {
+    toast('API error: ' + e.message, 'error');
+    throw e;
+  }
+}
+
+// --- Radio button UI ---
+document.querySelectorAll('#routing-method .radio-option').forEach(opt => {
+  opt.addEventListener('click', () => {
+    document.querySelectorAll('#routing-method .radio-option').forEach(o => o.classList.remove('selected'));
+    opt.classList.add('selected');
+    opt.querySelector('input[type="radio"]').checked = true;
+  });
+});
+
+// --- Load settings ---
+async function loadSettings() {
+  try {
+    const settings = await api('/admin/api/settings');
+    document.getElementById('proxy-enabled').checked = !!settings.proxy_enabled;
+    const method = settings.routing_method || 'round_robin';
+    document.querySelectorAll('#routing-method .radio-option').forEach(o => {
+      const isSelected = o.dataset.value === method;
+      o.classList.toggle('selected', isSelected);
+      o.querySelector('input[type="radio"]').checked = isSelected;
+    });
+  } catch (e) {}
+}
+
+// --- Save proxy settings ---
+async function saveProxySettings() {
+  const btn = document.getElementById('btn-save-proxy');
+  btn.disabled = true;
+  try {
+    await api('/admin/api/settings', {
+      method: 'POST',
+      body: JSON.stringify({
+        proxy_enabled: document.getElementById('proxy-enabled').checked
+      })
+    });
+    toast('Proxy settings saved', 'success');
+  } catch (e) {}
+  btn.disabled = false;
+}
+
+// --- Save routing settings ---
+async function saveRoutingSettings() {
+  const btn = document.getElementById('btn-save-routing');
+  btn.disabled = true;
+  try {
+    const method = document.querySelector('#routing-method input[type="radio"]:checked').value;
+    await api('/admin/api/settings', {
+      method: 'POST',
+      body: JSON.stringify({
+        routing_method: method
+      })
+    });
+    toast('Routing settings saved', 'success');
+  } catch (e) {}
+  btn.disabled = false;
+}
+
+// --- Change password ---
+async function changePassword() {
+  const btn = document.getElementById('btn-change-pw');
+  const oldPw = document.getElementById('old-password').value;
+  const newPw = document.getElementById('new-password').value;
+  const confirmPw = document.getElementById('confirm-password').value;
+
+  if (!oldPw || !newPw || !confirmPw) {
+    toast('Please fill in all fields', 'error');
+    return;
+  }
+  if (newPw !== confirmPw) {
+    toast('New passwords do not match', 'error');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loading"></span> Changing...';
+  try {
+    await api('/admin/api/change-password', {
+      method: 'POST',
+      body: JSON.stringify({
+        old_password: oldPw,
+        new_password: newPw
+      })
+    });
+    toast('Password changed successfully', 'success');
+    document.getElementById('old-password').value = '';
+    document.getElementById('new-password').value = '';
+    document.getElementById('confirm-password').value = '';
+  } catch (e) {}
+  btn.disabled = false;
+  btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Change Password';
+}
+
+// --- Init ---
+checkAuth();
+loadSettings();
+</script>
+
+</body>
+</html>

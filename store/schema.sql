@@ -64,5 +64,11 @@ CREATE TABLE IF NOT EXISTS farm_config (
   value TEXT
 );
 
+-- settings (key-value for app settings)
+CREATE TABLE IF NOT EXISTS settings (
+  key TEXT PRIMARY KEY,
+  value TEXT
+);
+
 CREATE INDEX IF NOT EXISTS idx_usage_model ON usage(model, exhausted);
 CREATE INDEX IF NOT EXISTS idx_usage_account ON usage(account_id);

@@ -46,6 +46,8 @@ type FarmRun struct {
 	PID          int    `json:"pid"`
 	NewAccounts  int    `json:"new_accounts"`
 	LogPath      string `json:"log_path"`
+	SuccessCount int    `json:"success_count"`
+	FailCount    int    `json:"fail_count"`
 }
 
 type ModelDef struct {

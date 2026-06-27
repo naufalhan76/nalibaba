@@ -1,5 +1,10 @@
 package store
 
+import (
+	"os"
+	"strings"
+)
+
 // Usage operations — per (account, model) tracking
 
 func (s *Store) GetEligibleAccounts(model string) ([]int64, error) {
@@ -198,6 +203,16 @@ func (s *Store) ListFarmRuns(limit int) ([]FarmRun, error) {
 		if err := rows.Scan(&f.ID, &f.StartedAt, &f.EndedAt, &f.Status,
 			&f.MaxAttempts, &f.PID, &f.NewAccounts, &f.LogPath); err != nil {
 			return nil, err
+		}
+		// Parse log file to extract success/fail counts
+		if f.LogPath != "" {
+			if data, err := os.ReadFile(f.LogPath); err == nil {
+				logText := string(data)
+				// Count "→ ✅ SUCCESS!" lines
+				f.SuccessCount = strings.Count(logText, "→ ✅ SUCCESS!")
+				// Count "→ ❌ Failed" lines
+				f.FailCount = strings.Count(logText, "→ ❌ Failed")
+			}
 		}
 		out = append(out, f)
 	}

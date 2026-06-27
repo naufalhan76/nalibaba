@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login — Alibaba Router</title>
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --card: #1a1a1a;
+    --border: #2a2a2a;
+    --border-hover: #3a3a3a;
+    --text: #e4e4e4;
+    --text-dim: #8a8a8a;
+    --text-muted: #5a5a5a;
+    --accent: #00d4ff;
+    --accent-dim: #0099bb;
+    --accent-bg: rgba(0, 212, 255, 0.08);
+    --danger: #ff4757;
+    --danger-bg: rgba(255, 71, 87, 0.1);
+    --mono: 'SF Mono', 'Fira Code', 'Cascadia Code', 'JetBrains Mono', Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+    --radius: 8px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+  }
+  .login-box {
+    width: 100%;
+    max-width: 380px;
+    padding: 24px;
+  }
+  .login-brand {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+  .login-brand svg {
+    color: var(--accent);
+    margin-bottom: 12px;
+  }
+  .login-brand h1 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .login-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+  }
+  .form-group {
+    margin-bottom: 16px;
+  }
+  .form-group label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+  .form-group input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    padding: 10px 14px;
+    border-radius: 6px;
+    transition: border-color 0.15s;
+  }
+  .form-group input:focus {
+    outline: none;
+    border-color: var(--accent-dim);
+  }
+  .btn-login {
+    width: 100%;
+    padding: 10px 16px;
+    border-radius: 6px;
+    border: 1px solid var(--accent-dim);
+    background: var(--accent-bg);
+    color: var(--accent);
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .btn-login:hover {
+    background: rgba(0, 212, 255, 0.15);
+    border-color: var(--accent);
+  }
+  .btn-login:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .error-msg {
+    color: var(--danger);
+    font-size: 12px;
+    margin-top: 12px;
+    text-align: center;
+    display: none;
+  }
+  .error-msg.show {
+    display: block;
+  }
+  .loading {
+    display: inline-block; width: 12px; height: 12px;
+    border: 2px solid var(--border); border-top-color: var(--accent);
+    border-radius: 50%; animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div class="login-box">
+  <div class="login-brand">
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <rect x="2" y="14" width="20" height="8" rx="2"/><path d="M6.01 18H6M10 18h.01M15 10v4M17.84 7.17a4 4 0 0 0-5.66 0M20.66 4.34a8 8 0 0 0-11.31 0"/>
+    </svg>
+    <h1>Alibaba Router</h1>
+  </div>
+  <div class="login-card">
+    <form id="login-form" onsubmit="handleLogin(event)">
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" autocomplete="current-password" required autofocus>
+      </div>
+      <button type="submit" class="btn-login" id="btn-login">
+        Sign In
+      </button>
+      <div class="error-msg" id="error-msg"></div>
+    </form>
+  </div>
+</div>
+
+<script>
+async function handleLogin(e) {
+  e.preventDefault();
+  const btn = document.getElementById('btn-login');
+  const errEl = document.getElementById('error-msg');
+  const password = document.getElementById('password').value;
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loading"></span> Signing in...';
+  errEl.classList.remove('show');
+
+  try {
+    const r = await fetch('/admin/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password })
+    });
+    if (!r.ok) {
+      const data = await r.json().catch(() => ({}));
+      throw new Error(data.error || `Login failed (${r.status})`);
+    }
+    window.location.href = '/dashboard.html';
+  } catch (err) {
+    errEl.textContent = err.message;
+    errEl.classList.add('show');
+    btn.disabled = false;
+    btn.innerHTML = 'Sign In';
+  }
+}
+</script>
+
+</body>
+</html>

@@ -447,6 +447,10 @@
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/></svg>
         Farm
       </a>
+      <a href="/settings.html" class="nav-link">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Settings
+      </a>
     </div>
   </div>
 </nav>
@@ -649,7 +653,7 @@
         <table>
           <thead>
             <tr>
-              <th>ID</th><th>Started</th><th class="hide-mobile">Ended</th><th>Status</th><th class="hide-mobile">Max Attempts</th><th>New Accounts</th>
+              <th>ID</th><th>Started</th><th class="hide-mobile">Ended</th><th>Status</th><th class="hide-mobile">Max Attempts</th><th>Success</th><th>Failed</th><th>New Accounts</th>
             </tr>
           </thead>
           <tbody id="runs-tbody">
@@ -681,6 +685,19 @@ let selectedRunId = null;
 let selectedLogPath = null;
 let autoScroll = true;
 let logPolling = false;
+
+
+// --- Auth check ---
+async function checkAuth() {
+  try {
+    const r = await fetch(API + '/admin/api/auth-check');
+    if (!r.ok) {
+      window.location.href = '/login.html';
+    }
+  } catch (e) {
+    window.location.href = '/login.html';
+  }
+}
 
 // --- Helpers ---
 function toast(msg, type = '') {
@@ -839,10 +856,7 @@ async function saveFarmConfig() {
       const el = document.getElementById(CONFIG_INPUT_MAP[key]);
       if (!el) continue;
       let val = el.value;
-      if (key === 'IMAP_PORT' || key === 'MAX_ATTEMPTS') {
-        val = parseInt(val) || 0;
-      }
-      payload[key] = val;
+      payload[key] = String(val);
     }
     await api('/admin/api/farm/config', { method: 'POST', body: JSON.stringify(payload) });
     toast('Configuration saved', 'success');
@@ -944,7 +958,7 @@ async function loadRuns() {
     const runs = await api('/admin/api/farm/runs?limit=20');
     const tb = document.getElementById('runs-tbody');
     if (!runs || runs.length === 0) {
-      tb.innerHTML = '<tr><td colspan="6"><div class="empty">No runs yet</div></td></tr>';
+      tb.innerHTML = '<tr><td colspan="8"><div class="empty">No runs yet</div></td></tr>';
       return;
     }
     tb.innerHTML = runs.map(r => {
@@ -956,6 +970,8 @@ async function loadRuns() {
           <td class="td-muted hide-mobile">${fmtDate(r.ended_at)}</td>
           <td>${runStatusBadge(r.status)}</td>
           <td class="td-mono hide-mobile">${escapeHtml(String(r.max_attempts ?? '—'))}</td>
+          <td class="td-mono" style="color:#4ade80">${escapeHtml(String(r.success_count ?? 0))}</td>
+          <td class="td-mono" style="color:#f87171">${escapeHtml(String(r.fail_count ?? 0))}</td>
           <td class="td-mono">${escapeHtml(String(r.new_accounts ?? '—'))}</td>
         </tr>
       `;
@@ -973,6 +989,7 @@ function selectRun(runId, logPath) {
 }
 
 // --- Init ---
+checkAuth();
 async function init() {
   loadFarmConfig(); // fire-and-forget; non-blocking
   await Promise.all([loadStatus(), loadRuns()]);

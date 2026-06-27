@@ -334,6 +334,10 @@
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/></svg>
         Farm
       </a>
+      <a href="/settings.html" class="nav-link">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Settings
+      </a>
     </div>
   </div>
 </nav>
@@ -384,6 +388,30 @@
           Dead Accounts
         </div>
         <div class="stat-value warning" id="stat-dead">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Base URL -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        OpenAI Base URL
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-body">
+        <div class="status-row">
+          <span class="status-label">API Endpoint</span>
+          <span class="status-value" style="display: flex; align-items: center; gap: 8px;">
+            <code id="base-url" style="font-family: var(--mono); font-size: 13px; color: var(--accent);">—</code>
+            <button class="btn btn-sm btn-primary" onclick="copyBaseUrl()" id="btn-copy-url">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              Copy
+            </button>
+          </span>
+        </div>
       </div>
     </div>
   </div>
@@ -483,6 +511,19 @@ function toggleNav() {
 document.querySelectorAll('.nav-link').forEach(l => l.addEventListener('click', () => {
   document.querySelector('.nav-links').classList.remove('open');
 }));
+
+
+// --- Auth check ---
+async function checkAuth() {
+  try {
+    const r = await fetch(API + '/admin/api/auth-check');
+    if (!r.ok) {
+      window.location.href = '/login.html';
+    }
+  } catch (e) {
+    window.location.href = '/login.html';
+  }
+}
 
 // --- Helpers ---
 function toast(msg, type = '') {
@@ -643,6 +684,51 @@ async function revokeKey(key) {
   }
 }
 
+// --- Base URL ---
+async function loadBaseUrl() {
+  try {
+    const settings = await api('/admin/api/settings');
+    let baseUrl = settings.custom_domain || window.location.origin;
+    // If no custom domain, use the current host with port 7622
+    if (!settings.custom_domain) {
+      const host = window.location.hostname;
+      baseUrl = `http://${host}:7622`;
+    }
+    document.getElementById('base-url').textContent = baseUrl;
+  } catch (e) {
+    // Fallback to current origin
+    const host = window.location.hostname;
+    document.getElementById('base-url').textContent = `http://${host}:7622`;
+  }
+}
+
+async function copyBaseUrl() {
+  const url = document.getElementById('base-url').textContent;
+  const btn = document.getElementById('btn-copy-url');
+  const originalHtml = btn.innerHTML;
+  try {
+    await navigator.clipboard.writeText(url);
+    btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Copied!';
+    toast('Base URL copied to clipboard', 'success');
+    setTimeout(() => {
+      btn.innerHTML = originalHtml;
+    }, 2000);
+  } catch (e) {
+    // fallback
+    const ta = document.createElement('textarea');
+    ta.value = url;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Copied!';
+    toast('Base URL copied to clipboard', 'success');
+    setTimeout(() => {
+      btn.innerHTML = originalHtml;
+    }, 2000);
+  }
+}
+
 // --- Quick health ---
 async function loadHealth() {
   try {
@@ -657,8 +743,9 @@ async function loadHealth() {
 }
 
 // --- Init ---
+checkAuth();
 async function init() {
-  await Promise.all([loadStats(), loadDeadCount(), loadKeys(), loadHealth()]);
+  await Promise.all([loadStats(), loadDeadCount(), loadKeys(), loadHealth(), loadBaseUrl()]);
 }
 
 init();
