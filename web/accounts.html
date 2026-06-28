@@ -233,6 +233,80 @@
     .nav-link { padding: 10px 14px; width: 100%; }
     .nav-inner { position: relative; }
   }
+
+  /* Warmup Progress Bar */
+  .warmup-progress {
+    margin: 16px 0;
+    padding: 16px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    display: none;
+  }
+  .warmup-progress.active { display: block; }
+  .warmup-progress-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    font-size: 13px;
+    color: var(--text-dim);
+  }
+  .warmup-progress-bar {
+    width: 100%;
+    height: 24px;
+    background: var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+  }
+  .warmup-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent-dim));
+    transition: width 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--bg);
+  }
+  .warmup-stats {
+    display: flex;
+    gap: 16px;
+    margin-top: 12px;
+    font-size: 12px;
+  }
+  .warmup-stat {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .warmup-stat-label { color: var(--text-dim); }
+  .warmup-stat-value {
+    font-family: var(--mono);
+    font-weight: 600;
+  }
+  .warmup-stat.alive .warmup-stat-value { color: var(--success); }
+  .warmup-stat.dead .warmup-stat-value { color: var(--danger); }
+  .warmup-stat.errors .warmup-stat-value { color: var(--warning); }
+/* Bulk action bar */
+  .bulk-bar {
+    margin-bottom: 12px;
+    padding: 10px 16px;
+    background: var(--card);
+    border: 1px solid var(--accent-dim);
+    border-radius: 6px;
+    display: none;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+  .bulk-bar.active { display: flex; }
+  .bulk-bar-info {
+    font-size: 13px;
+    color: var(--text-dim);
+    flex: 1;
+  }
 </style>
 </head>
 <body>
@@ -296,6 +370,39 @@
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
           Import from results.json
         </button>
+        <button class="btn btn-success" onclick="warmupAccounts()" id="btn-warmup">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          Warmup
+        </button>
+      </div>
+    </div>
+    <!-- Warmup Progress -->
+    <div class="warmup-progress" id="warmup-progress">
+      <div class="warmup-progress-header">
+        <span>Testing accounts with <span id="warmup-model"></span>...</span>
+        <span id="warmup-percent">0%</span>
+      </div>
+      <div class="warmup-progress-bar">
+        <div class="warmup-progress-fill" id="warmup-fill" style="width: 0%"></div>
+      </div>
+      <div class="warmup-stats">
+        <div class="warmup-stat">
+          <span class="warmup-stat-label">Tested:</span>
+          <span class="warmup-stat-value" id="warmup-tested">0</span>
+          <span class="warmup-stat-label">/ <span id="warmup-total">0</span></span>
+        </div>
+        <div class="warmup-stat alive">
+          <span class="warmup-stat-label">Alive:</span>
+          <span class="warmup-stat-value" id="warmup-alive">0</span>
+        </div>
+        <div class="warmup-stat dead">
+          <span class="warmup-stat-label">Dead:</span>
+          <span class="warmup-stat-value" id="warmup-dead">0</span>
+        </div>
+        <div class="warmup-stat errors">
+          <span class="warmup-stat-label">Errors:</span>
+          <span class="warmup-stat-value" id="warmup-errors">0</span>
+        </div>
       </div>
     </div>
     <div class="card">
@@ -332,6 +439,27 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M18 6L6 18M6 6l12 12"/></svg>
         Dead Accounts
       </div>
+      <div class="section-actions">
+        <button class="btn btn-success btn-sm" onclick="bulkRevive()" id="btn-revive-all">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          Revive All
+        </button>
+      </div>
+    </div>
+    <!-- Dead Bulk Action Bar -->
+    <div class="bulk-bar" id="dead-bulk-bar">
+      <span class="bulk-bar-info">
+        <span id="dead-bulk-count">0</span> selected
+      </span>
+      <button class="btn btn-success btn-sm" onclick="bulkRevive()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        Revive Selected
+      </button>
+      <button class="btn btn-danger btn-sm" onclick="bulkDelete()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        Delete Selected
+      </button>
+      <button class="btn btn-sm" onclick="toggleDeadSelect(false)">Deselect All</button>
     </div>
     <div class="card">
       <div class="card-body">
@@ -339,11 +467,14 @@
           <table>
             <thead>
               <tr>
-                <th>ID</th><th>Email</th><th>API Key</th><th style="text-align:right">Actions</th>
+                <th style="width:36px">
+                  <input type="checkbox" id="dead-select-all" onchange="toggleDeadSelectAll()" style="accent-color:var(--accent);cursor:pointer">
+                </th>
+                <th>ID</th><th>Email</th><th>Reason</th><th>Dead At</th><th style="text-align:right">Actions</th>
               </tr>
             </thead>
             <tbody id="dead-tbody">
-              <tr><td colspan="4"><div class="empty">Loading...</div></td></tr>
+              <tr><td colspan="6"><div class="empty">Loading...</div></td></tr>
             </tbody>
           </table>
         </div>
@@ -500,17 +631,22 @@ async function loadDead() {
       return;
     }
     tb.innerHTML = dead.map(a => `
-      <tr>
-        <td class="td-mono td-muted">${escapeHtml(String(a.id ?? '—'))}</td>
-        <td>${escapeHtml(a.email || '—')}</td>
-        <td class="td-mono">${escapeHtml(a.api_key || '—')}</td>
-        <td style="text-align:right">
-          <div class="row-actions">
-            <button class="btn btn-success btn-sm" onclick="reviveAccount('${escapeHtml(String(a.id))}')">Revive</button>
-          </div>
-        </td>
-      </tr>
-    `).join('');
+          <tr>
+            <td style="text-align:center">
+              <input type="checkbox" class="dead-cb" value="${escapeHtml(String(a.id ?? ''))}" onchange="updateDeadBulkBar()" style="accent-color:var(--accent);cursor:pointer">
+            </td>
+            <td class="td-mono td-muted">${escapeHtml(String(a.id ?? '—'))}</td>
+            <td>${escapeHtml(a.email || '—')}</td>
+            <td class="td-dim">${escapeHtml(a.dead_reason || '—')}</td>
+            <td class="td-muted">${fmtDate(a.dead_at)}</td>
+            <td style="text-align:right">
+              <div class="row-actions">
+                <button class="btn btn-success btn-sm" onclick="reviveAccount(${a.id})">Revive</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteAccount(${a.id})">Delete</button>
+              </div>
+            </td>
+          </tr>
+        `).join('');
   } catch (e) {}
 }
 
@@ -520,6 +656,154 @@ async function reviveAccount(accountId) {
     toast('Account revived', 'success');
     loadDead();
     loadAccounts();
+  } catch (e) {}
+}
+
+// --- Warmup ---
+let warmupPollInterval = null;
+
+async function warmupAccounts() {
+  const btn = document.getElementById('btn-warmup');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loading"></span> Starting...';
+
+  try {
+    const r = await api('/admin/api/accounts/warmup', { 
+      method: 'POST', 
+      body: JSON.stringify({}) 
+    });
+
+    if (r.status === 'no_active_accounts') {
+      toast('No active accounts to test', 'error');
+      btn.disabled = false;
+      btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg> Warmup';
+      return;
+    }
+
+    // Show progress bar
+    const progressEl = document.getElementById('warmup-progress');
+    progressEl.classList.add('active');
+    document.getElementById('warmup-model').textContent = r.model || 'qwen3.5-flash';
+    document.getElementById('warmup-total').textContent = r.total;
+
+    // Start polling
+    warmupPollInterval = setInterval(pollWarmupStatus, 500);
+
+  } catch (e) {
+    toast('Warmup failed: ' + e.message, 'error');
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg> Warmup';
+  }
+}
+
+async function pollWarmupStatus() {
+  try {
+    const status = await api('/admin/api/accounts/warmup/status');
+    
+    // Update progress bar
+    const percent = status.total > 0 ? Math.round((status.tested / status.total) * 100) : 0;
+    document.getElementById('warmup-percent').textContent = percent + '%';
+    document.getElementById('warmup-fill').style.width = percent + '%';
+    document.getElementById('warmup-tested').textContent = status.tested;
+    document.getElementById('warmup-alive').textContent = status.alive;
+    document.getElementById('warmup-dead').textContent = status.dead;
+    document.getElementById('warmup-errors').textContent = status.errors;
+
+    // Check if complete
+    if (!status.running) {
+      clearInterval(warmupPollInterval);
+      warmupPollInterval = null;
+
+      // Hide progress after 2 seconds
+      setTimeout(() => {
+        document.getElementById('warmup-progress').classList.remove('active');
+      }, 2000);
+
+      // Show result toast
+      const msg = `Warmup complete: ${status.alive} alive, ${status.dead} dead`;
+      toast(msg + (status.errors > 0 ? `, ${status.errors} errors` : ''), 'success');
+
+      // Re-enable button and reload accounts
+      const btn = document.getElementById('btn-warmup');
+      btn.disabled = false;
+      btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg> Warmup';
+      
+      await Promise.all([loadAccounts(), loadDead()]);
+    }
+  } catch (e) {
+    console.error('Failed to poll warmup status:', e);
+  }
+}
+
+// --- Dead Account Actions ---
+async function reviveAccount(accountId) {
+  try {
+    await api('/admin/api/accounts/revive', { method: 'POST', body: JSON.stringify({ account_id: parseInt(accountId) }) });
+    toast('Account revived', 'success');
+    loadDead();
+    loadAccounts();
+  } catch (e) {}
+}
+
+async function deleteAccount(id) {
+  if (!confirm(`Delete account #${id}?`)) return;
+  try {
+    await api('/admin/api/accounts/bulk-delete', { method: 'POST', body: JSON.stringify({ account_ids: [id] }) });
+    toast('Account deleted', 'success');
+    await Promise.all([loadAccounts(), loadDead()]);
+  } catch (e) {}
+}
+
+// --- Dead Bulk Actions ---
+function toggleDeadSelect(checked) {
+  document.querySelectorAll('.dead-cb').forEach(cb => cb.checked = checked);
+  document.getElementById('dead-select-all').checked = checked;
+  updateDeadBulkBar();
+}
+
+function toggleDeadSelectAll() {
+  toggleDeadSelect(document.getElementById('dead-select-all').checked);
+}
+
+function updateDeadBulkBar() {
+  const checked = document.querySelectorAll('.dead-cb:checked');
+  const count = checked.length;
+  const bar = document.getElementById('dead-bulk-bar');
+  if (count === 0) {
+    bar.classList.remove('active');
+    return;
+  }
+  bar.classList.add('active');
+  document.getElementById('dead-bulk-count').textContent = count;
+}
+
+function getDeadSelectedIds() {
+  return Array.from(document.querySelectorAll('.dead-cb:checked')).map(cb => parseInt(cb.value));
+}
+
+async function bulkRevive() {
+  let ids = getDeadSelectedIds();
+  if (ids.length === 0) {
+    return;
+  }
+  if (!confirm(`Revive ${ids.length} account(s)?`)) return;
+  try {
+    const r = await api('/admin/api/accounts/bulk-revive', { method: 'POST', body: JSON.stringify({ account_ids: ids }) });
+    toast(`Revived ${r.count} accounts`, 'success');
+    toggleDeadSelect(false);
+    await Promise.all([loadAccounts(), loadDead()]);
+  } catch (e) {}
+}
+
+async function bulkDelete() {
+  const ids = getDeadSelectedIds();
+  if (ids.length === 0) return;
+  if (!confirm(`⚠️ Permanently delete ${ids.length} account(s)? This cannot be undone!`)) return;
+  try {
+    const r = await api('/admin/api/accounts/bulk-delete', { method: 'POST', body: JSON.stringify({ account_ids: ids }) });
+    toast(`Deleted ${r.count} accounts`, 'success');
+    toggleDeadSelect(false);
+    await Promise.all([loadAccounts(), loadDead()]);
   } catch (e) {}
 }
 

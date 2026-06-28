@@ -65,25 +65,9 @@ func (a *AdminHandler) FarmStart(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// FARM_PROXY: if "pool" (toggle on), pick a healthy proxy from pool and convert format
-	// farm.py expects: host:port:user:pass
-	// proxy pool stores: http://user:pass@ip:port
-	proxyMode := cfg[store.CfgFarmProxy] // "pool" = use pool, "" = direct
-	farmProxyEnv := ""
-	if proxyMode == "pool" {
-		proxies, err := a.store.GetHealthyProxies()
-		if err == nil && len(proxies) > 0 {
-			// pick random healthy proxy
-			p := proxies[time.Now().UnixNano()%int64(len(proxies))]
-			farmProxyEnv = convertProxyURL(p.URL)
-		}
-	}
-	if farmProxyEnv != "" {
-		cfg[store.CfgFarmProxy] = farmProxyEnv
-	} else if proxyMode == "pool" {
-		// pool requested but no healthy proxies — warn but continue direct
-		cfg[store.CfgFarmProxy] = ""
-	}
+	// FARM_PROXY: removed from static env — farm.py handles round-robin via API
+	//                      calls /admin/api/proxies/random each attempt
+	delete(cfg, store.CfgFarmProxy)
 
 	farmRunner.mu.Lock()
 	defer farmRunner.mu.Unlock()

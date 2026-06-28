@@ -25,11 +25,65 @@ func (s *Store) ReviveAccount(accountID int64) error {
 	return err
 }
 
-// ListDeadAccounts returns all dead accounts.
+// BulkRevive unflags multiple dead accounts at once.
+func (s *Store) BulkRevive(ids []int64) (int64, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	tx, err := s.db.Begin()
+	if err != nil {
+		return 0, err
+	}
+	for _, id := range ids {
+		_, err := tx.Exec(`UPDATE accounts SET is_dead=0, dead_reason=NULL, dead_at=NULL WHERE id=?`, id)
+		if err != nil {
+			tx.Rollback()
+			return 0, err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return 0, err
+	}
+	return int64(len(ids)), nil
+}
+
+// DeleteAccount permanently removes an account from the database.
+func (s *Store) DeleteAccount(accountID int64) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	// Delete usage first (foreign key)
+	s.db.Exec(`DELETE FROM usage WHERE account_id=?`, accountID)
+	_, err := s.db.Exec(`DELETE FROM accounts WHERE id=?`, accountID)
+	return err
+}
+
+// BulkDelete permanently removes multiple accounts at once.
+func (s *Store) BulkDelete(ids []int64) (int64, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	tx, err := s.db.Begin()
+	if err != nil {
+		return 0, err
+	}
+	for _, id := range ids {
+		tx.Exec(`DELETE FROM usage WHERE account_id=?`, id)
+		_, err := tx.Exec(`DELETE FROM accounts WHERE id=?`, id)
+		if err != nil {
+			tx.Rollback()
+			return 0, err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return 0, err
+	}
+	return int64(len(ids)), nil
+}
+
+// ListDeadAccounts returns all dead accounts with reason and dead_at.
 func (s *Store) ListDeadAccounts() ([]Account, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	rows, err := s.db.Query(`SELECT id, email, api_key, added_at, source FROM accounts WHERE is_dead=1 ORDER BY id`)
+	rows, err := s.db.Query(`SELECT id, email, api_key, added_at, source,
+		COALESCE(dead_reason,''), COALESCE(dead_at,'') FROM accounts WHERE is_dead=1 ORDER BY id`)
 	if err != nil {
 		return nil, err
 	}
@@ -37,9 +91,11 @@ func (s *Store) ListDeadAccounts() ([]Account, error) {
 	var out []Account
 	for rows.Next() {
 		var a Account
-		if err := rows.Scan(&a.ID, &a.Email, &a.APIKey, &a.AddedAt, &a.Source); err != nil {
+		if err := rows.Scan(&a.ID, &a.Email, &a.APIKey, &a.AddedAt, &a.Source,
+			&a.DeadReason, &a.DeadAt); err != nil {
 			return nil, err
 		}
+		a.IsDead = true
 		out = append(out, a)
 	}
 	return out, nil

@@ -12,11 +12,14 @@ import (
 )
 
 type Account struct {
-	ID        int64  `json:"id"`
-	Email     string `json:"email"`
-	APIKey    string `json:"api_key"`
-	AddedAt   string `json:"added_at"`
-	Source    string `json:"source"`
+	ID          int64  `json:"id"`
+	Email       string `json:"email"`
+	APIKey      string `json:"api_key"`
+	AddedAt     string `json:"added_at"`
+	Source      string `json:"source"`
+	IsDead      bool   `json:"is_dead"`
+	DeadReason  string `json:"dead_reason,omitempty"`
+	DeadAt      string `json:"dead_at,omitempty"`
 }
 
 type Usage struct {
@@ -190,7 +193,9 @@ func (s *Store) ImportAccount(email, apiKey, source string) (int64, error) {
 func (s *Store) ListAccounts() ([]Account, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	rows, err := s.db.Query(`SELECT id, email, api_key, added_at, source FROM accounts ORDER BY id`)
+	rows, err := s.db.Query(`SELECT id, email, api_key, added_at, source,
+		COALESCE(is_dead,0), COALESCE(dead_reason,''), COALESCE(dead_at,'')
+		FROM accounts ORDER BY id`)
 	if err != nil {
 		return nil, err
 	}
@@ -198,9 +203,12 @@ func (s *Store) ListAccounts() ([]Account, error) {
 	var out []Account
 	for rows.Next() {
 		var a Account
-		if err := rows.Scan(&a.ID, &a.Email, &a.APIKey, &a.AddedAt, &a.Source); err != nil {
+		var dead int
+		if err := rows.Scan(&a.ID, &a.Email, &a.APIKey, &a.AddedAt, &a.Source,
+			&dead, &a.DeadReason, &a.DeadAt); err != nil {
 			return nil, err
 		}
+		a.IsDead = dead == 1
 		out = append(out, a)
 	}
 	return out, nil

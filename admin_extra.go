@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"sync/atomic"
 	"time"
 
 	"alibaba-router/store"
@@ -45,6 +46,48 @@ func (a *AdminHandler) ReviveAccount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, 200, map[string]string{"status": "revived"})
+}
+
+// BulkRevive: POST {account_ids: [...]} — revive multiple accounts.
+func (a *AdminHandler) BulkRevive(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		w.WriteHeader(405)
+		return
+	}
+	var body struct {
+		AccountIDs []int64 `json:"account_ids"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || len(body.AccountIDs) == 0 {
+		writeJSON(w, 400, map[string]string{"error": "account_ids array required"})
+		return
+	}
+	n, err := a.store.BulkRevive(body.AccountIDs)
+	if err != nil {
+		writeErr(w, 500, err)
+		return
+	}
+	writeJSON(w, 200, map[string]any{"status": "revived", "count": n})
+}
+
+// BulkDelete: POST {account_ids: [...]} — permanently delete accounts.
+func (a *AdminHandler) BulkDelete(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		w.WriteHeader(405)
+		return
+	}
+	var body struct {
+		AccountIDs []int64 `json:"account_ids"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || len(body.AccountIDs) == 0 {
+		writeJSON(w, 400, map[string]string{"error": "account_ids array required"})
+		return
+	}
+	n, err := a.store.BulkDelete(body.AccountIDs)
+	if err != nil {
+		writeErr(w, 500, err)
+		return
+	}
+	writeJSON(w, 200, map[string]any{"status": "deleted", "count": n})
 }
 
 // Models: GET — list available models (nalibaba-* with upstream mapping).
@@ -200,7 +243,25 @@ func (a *AdminHandler) ProxyCheck(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// normalizeProxyScheme ensures proxy URL has a scheme.
+// Round-robin proxy counter for farm.py
+var proxyRRCount atomic.Uint64
+
+// ProxyRandom: GET — returns the next healthy proxy in round-robin order.
+func (a *AdminHandler) ProxyRandom(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		w.WriteHeader(405)
+		return
+	}
+	proxies, err := a.store.GetHealthyProxies()
+	if err != nil || len(proxies) == 0 {
+		writeJSON(w, 200, map[string]any{"proxy": "", "error": "no healthy proxies"})
+		return
+	}
+	idx := proxyRRCount.Add(1) - 1
+	p := proxies[idx%uint64(len(proxies))]
+	farmFmt := convertProxyURL(p.URL)
+	writeJSON(w, 200, map[string]any{"proxy": farmFmt, "url": p.URL, "region": p.Region})
+}
 func normalizeProxyScheme(s string) string {
 	if !contains(s, "://") {
 		return "http://" + s
